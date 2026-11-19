@@ -36,18 +36,38 @@ async function getMongoURI() {
     cached.uri = 'mongodb://127.0.0.1:27017/valora';
     return cached.uri;
   } catch (err) {
-    // Local MongoDB is not running, seamlessly start in-memory MongoDB
-    console.log('Local MongoDB not detected on 27017. Initializing embedded MongoDB engine...');
+    // Local MongoDB is not running, seamlessly start embedded persistent MongoDB engine
+    console.log('Local MongoDB not detected on 27017. Initializing embedded persistent MongoDB engine...');
     const { MongoMemoryServer } = await import('mongodb-memory-server');
+    const path = (await import('path')).default;
+    const fs = (await import('fs')).default;
+
+    const dbDir = path.join(process.cwd(), '.data', 'db');
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+
+    // Auto-remove stale lock file from previous crashed process if exists
+    const lockFile = path.join(dbDir, 'mongod.lock');
+    if (fs.existsSync(lockFile)) {
+      try {
+        fs.unlinkSync(lockFile);
+      } catch (lockErr) {
+        // file might be active
+      }
+    }
+
     if (!cached.mongod) {
       cached.mongod = await MongoMemoryServer.create({
         instance: {
           dbName: 'valora',
+          dbPath: dbDir,
+          storageEngine: 'wiredTiger',
         },
       });
     }
     cached.uri = cached.mongod.getUri();
-    console.log('Embedded MongoDB engine active at:', cached.uri);
+    console.log('Embedded persistent MongoDB engine active at:', cached.uri);
     return cached.uri;
   }
 }
@@ -62,12 +82,35 @@ async function connectDB() {
       const uri = await getMongoURI();
       const opts = {
         bufferCommands: false,
-        maxPoolSize: 10,
+        maxPoolSize: 25,
         serverSelectionTimeoutMS: 10000,
       };
 
       const conn = await mongoose.connect(uri, opts);
       console.log('Mongoose connected successfully to VALORA database');
+
+      // Ensure Admin account always exists
+      try {
+        const User = mongoose.models.User || (await import('@/models/User')).default;
+        const adminExists = await User.findOne({ role: 'admin' });
+        if (!adminExists) {
+          console.log('Admin account missing. Creating default admin account...');
+          const { hashPassword } = await import('./auth');
+          const passwordHash = await hashPassword('Admin@123');
+          await User.create({
+            name: 'System Administrator',
+            email: 'admin@valora.health',
+            passwordHash,
+            role: 'admin',
+            phone: '+91 98765 00001',
+            status: 'active',
+          });
+          console.log('Default Admin account created: admin@valora.health');
+        }
+      } catch (seedErr) {
+        console.error('Admin account ensure notice:', seedErr.message);
+      }
+
       return conn;
     })().catch((err) => {
       console.error('MongoDB connection error:', err.message);

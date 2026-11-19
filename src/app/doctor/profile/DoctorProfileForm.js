@@ -1,14 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { updateDoctorProfile } from '@/actions/doctorActions';
 import { DOCTOR_SPECIALTIES } from '@/lib/validations';
-import { Save, CheckCircle, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Save, CheckCircle, AlertCircle, ShieldCheck, Camera, Upload, Trash2 } from 'lucide-react';
+import PhoneInput from '@/components/ui/PhoneInput';
 
 export default function DoctorProfileForm({ initialUser, initialProfile }) {
+  const fileInputRef = useRef(null);
+
   const [name, setName] = useState(initialUser.name || '');
   const [phone, setPhone] = useState(initialUser.phone || '');
   const [email] = useState(initialUser.email || '');
+  const [avatar, setAvatar] = useState(initialUser.avatar || '');
 
   const [specialty, setSpecialty] = useState(initialProfile.specialty || 'General Medicine');
   const [qualifications, setQualifications] = useState(
@@ -34,15 +38,70 @@ export default function DoctorProfileForm({ initialUser, initialProfile }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  const handleImageFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file (PNG, JPG, WEBP).');
+      return;
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      setError('Image file size must be less than 3 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatar(reader.result);
+      setMessage('Profile photo selected. Click "Save Doctor Profile" below to apply.');
+      setError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatar('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    setMessage('Profile photo removed. Click "Save Doctor Profile" to confirm.');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setMessage('');
     setError('');
 
+    if (phone) {
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length > 0 && digits.length < 9) {
+        setError('Phone number must contain at least 9 digits.');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    const fee = Number(consultationFee);
+    if (isNaN(fee) || fee < 500) {
+      setError('Consultation fee must be a minimum of ₹500. A fee of ₹0 is not valid.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const exp = Number(experienceYears);
+    if (isNaN(exp) || exp < 1) {
+      setError('Years of experience cannot be 0. Certified physicians must have at least 1 year of clinical experience.');
+      setIsSubmitting(false);
+      return;
+    }
+
     const formData = new FormData();
     formData.append('name', name);
     formData.append('phone', phone);
+    formData.append('avatar', avatar);
     formData.append('specialty', specialty);
     formData.append('qualifications', qualifications);
     formData.append('experienceYears', experienceYears);
@@ -60,11 +119,14 @@ export default function DoctorProfileForm({ initialUser, initialProfile }) {
     const res = await updateDoctorProfile(formData);
 
     if (res.success) {
-      setMessage('Doctor profile & clinical availability updated!');
+      setMessage('Doctor profile & clinical availability updated! Reloading view...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
     } else {
       setError(res.error || 'Failed to update doctor profile');
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
@@ -102,10 +164,71 @@ export default function DoctorProfileForm({ initialUser, initialProfile }) {
       </div>
 
       {/* Basic & Specialty */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
         <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
-          1. Physician Details & Clinical Focus
+          1. Physician Details & Profile Photo
         </h3>
+
+        {/* Doctor Photo Section */}
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex flex-col sm:flex-row items-center gap-5">
+          <div className="relative group shrink-0">
+            <div className="w-20 h-20 rounded-full bg-emerald-100 border-2 border-emerald-300 overflow-hidden flex items-center justify-center text-emerald-800 font-black text-2xl shadow-sm">
+              {avatar ? (
+                <img src={avatar} alt="Doctor Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span>{name ? name.charAt(0).toUpperCase() : 'D'}</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute bottom-0 right-0 p-1.5 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-md transition-colors"
+              title="Upload photo"
+            >
+              <Camera className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="flex-1 space-y-2 text-center sm:text-left">
+            <div>
+              <p className="text-xs font-bold text-slate-800">Physician Profile Photo</p>
+              <p className="text-[11px] text-slate-500">
+                Shown to patients on your directory card, appointments queue, and in the top navigation bar.
+              </p>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageFileChange}
+              className="hidden"
+            />
+
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 flex items-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Upload Doctor Photo</span>
+              </button>
+
+              {avatar && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold border border-rose-200 flex items-center gap-1.5 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Remove Photo</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1">Doctor Name</label>
@@ -129,12 +252,11 @@ export default function DoctorProfileForm({ initialUser, initialProfile }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Clinic Phone</label>
-            <input
-              type="tel"
+            <PhoneInput
+              label="Clinic Phone"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
+              onChange={(val) => setPhone(val)}
+              name="phone"
             />
           </div>
         </div>
@@ -165,9 +287,11 @@ export default function DoctorProfileForm({ initialUser, initialProfile }) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Years of Practice</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Years of Practice (Min. 1)</label>
             <input
               type="number"
+              min="1"
+              max="65"
               value={experienceYears}
               onChange={(e) => setExperienceYears(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm"
@@ -188,15 +312,16 @@ export default function DoctorProfileForm({ initialUser, initialProfile }) {
       </div>
 
       {/* OPD Schedule & Pricing */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
         <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
           2. OPD Scheduling & Consultation Fee
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Consultation Fee (₹)</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Consultation Fee (₹, Min 500)</label>
             <input
               type="number"
+              min="500"
               step="50"
               value={consultationFee}
               onChange={(e) => setConsultationFee(e.target.value)}

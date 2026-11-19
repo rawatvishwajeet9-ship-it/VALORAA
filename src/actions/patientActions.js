@@ -10,7 +10,7 @@ import Consultation from '@/models/Consultation';
 import Prescription from '@/models/Prescription';
 import DoctorPatientAccess from '@/models/DoctorPatientAccess';
 import AuditLog from '@/models/AuditLog';
-import { requireAuth, requireRole } from '@/lib/auth';
+import { requireAuth, requireRole, setSessionCookie } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -21,8 +21,24 @@ export async function getPatientDashboardData() {
     const session = await requireRole('patient');
     await connectDB();
 
-    const patientUser = await User.findById(session.id).select('-passwordHash').lean();
-    const patientProfile = await Patient.findOne({ userId: session.id }).lean();
+    let patientUser = await User.findById(session.id).select('-passwordHash').lean();
+    if (!patientUser && session.email) {
+      patientUser = await User.findOne({ email: session.email }).select('-passwordHash').lean();
+    }
+    if (!patientUser) {
+      await clearSessionCookie();
+      return { success: false, error: 'Session expired or patient record not found. Please log in again.' };
+    }
+
+    let patientProfile = await Patient.findOne({ userId: patientUser._id }).lean();
+    if (!patientProfile) {
+      const created = await Patient.create({
+        userId: patientUser._id,
+        bloodGroup: 'Unknown',
+        gender: 'prefer_not_to_say',
+      });
+      patientProfile = created.toObject();
+    }
 
     // Fetch upcoming appointments
     const upcomingAppointments = await Appointment.find({
@@ -116,6 +132,7 @@ export async function updatePatientProfile(formData) {
 
     const name = formData.get('name')?.toString().trim();
     const phone = formData.get('phone')?.toString().trim();
+    const avatar = formData.get('avatar')?.toString();
     const dateOfBirth = formData.get('dateOfBirth')?.toString();
     const gender = formData.get('gender')?.toString();
     const bloodGroup = formData.get('bloodGroup')?.toString();
@@ -123,6 +140,34 @@ export async function updatePatientProfile(formData) {
     const chronicRaw = formData.get('chronicConditions')?.toString();
     const heightCm = formData.get('heightCm') ? Number(formData.get('heightCm')) : null;
     const weightKg = formData.get('weightKg') ? Number(formData.get('weightKg')) : null;
+
+    // Validate Height
+    if (heightCm !== null && !isNaN(heightCm)) {
+      if (heightCm < 30 || heightCm > 260) {
+        return { success: false, error: 'Height must be a valid number between 30 cm and 260 cm' };
+      }
+    }
+
+    // Validate Weight
+    if (weightKg !== null && !isNaN(weightKg)) {
+      if (weightKg < 2 || weightKg > 400) {
+        return { success: false, error: 'Weight must be a valid number between 2 kg and 400 kg' };
+      }
+    }
+
+    // Validate Date of Birth
+    let parsedDob = undefined;
+    if (dateOfBirth) {
+      const dobDate = new Date(dateOfBirth);
+      const now = new Date();
+      if (isNaN(dobDate.getTime()) || dobDate > now) {
+        return { success: false, error: 'Date of birth cannot be in the future' };
+      }
+      if (dobDate.getFullYear() < 1900) {
+        return { success: false, error: 'Please enter a valid birth year after 1900' };
+      }
+      parsedDob = dobDate;
+    }
 
     const emergencyName = formData.get('emergencyName')?.toString().trim();
     const emergencyRelation = formData.get('emergencyRelation')?.toString().trim();
@@ -135,11 +180,15 @@ export async function updatePatientProfile(formData) {
     const insuranceProvider = formData.get('insuranceProvider')?.toString().trim();
     const insurancePolicyNumber = formData.get('insurancePolicyNumber')?.toString().trim();
 
-    // Update User basic info
-    await User.findByIdAndUpdate(session.id, {
-      name,
-      phone,
-    });
+    // Update User basic info and avatar
+    const userUpdates = { name, phone };
+    if (avatar !== undefined) {
+      userUpdates.avatar = avatar;
+    }
+    const updatedUser = await User.findByIdAndUpdate(session.id, userUpdates, { new: true });
+    if (updatedUser) {
+      await setSessionCookie(updatedUser);
+    }
 
     // Update Patient profile info
     const allergies = allergiesRaw ? allergiesRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
@@ -148,7 +197,7 @@ export async function updatePatientProfile(formData) {
     await Patient.findOneAndUpdate(
       { userId: session.id },
       {
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+        dateOfBirth: parsedDob,
         gender,
         bloodGroup,
         allergies,

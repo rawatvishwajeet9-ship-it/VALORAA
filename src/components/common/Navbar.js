@@ -13,8 +13,7 @@ export default function Navbar({ user }) {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     await logoutUser();
-    router.push('/login');
-    router.refresh();
+    window.location.href = '/login';
   };
 
   const getRoleBadge = (role) => {
@@ -45,16 +44,16 @@ export default function Navbar({ user }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
-                <Activity className="w-6 h-6 text-white stroke-[2.5]" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform shrink-0">
+                <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-white stroke-[2.5]" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-black tracking-tight text-slate-900 group-hover:text-teal-600 transition-colors">
+                <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900 group-hover:text-teal-600 transition-colors">
                   VALORA
                 </span>
-                <span className="text-[10px] font-semibold tracking-wider text-teal-600 uppercase -mt-1">
+                <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider text-teal-600 uppercase -mt-1">
                   Health System
                 </span>
               </div>
@@ -62,9 +61,16 @@ export default function Navbar({ user }) {
           </div>
 
           {/* User Nav and Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {user ? (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <Link
+                  href={`/${user.role}/dashboard`}
+                  className="hidden md:inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-xl border border-teal-200 transition-colors"
+                >
+                  My Workspace
+                </Link>
+
                 <div className="hidden sm:flex flex-col items-end">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-slate-800">{user.name}</span>
@@ -73,30 +79,38 @@ export default function Navbar({ user }) {
                   <span className="text-xs text-slate-500">{user.email}</span>
                 </div>
 
-                <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm">
-                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-teal-50 border border-teal-200 overflow-hidden flex items-center justify-center text-teal-800 font-bold text-xs sm:text-sm shrink-0 shadow-xs">
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name || 'User Profile'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span>{user.name ? user.name.charAt(0).toUpperCase() : 'U'}</span>
+                  )}
                 </div>
 
                 <button
                   onClick={handleLogout}
                   disabled={isLoggingOut}
                   title="Sign Out"
-                  className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-transparent hover:border-rose-100"
+                  className="p-1.5 sm:p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-transparent hover:border-rose-100"
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Link
                   href="/login"
-                  className="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-teal-600 transition-colors"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:text-teal-600 transition-colors"
                 >
                   Log In
                 </Link>
                 <Link
                   href="/register"
-                  className="px-4 py-2 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-sm transition-all hover:shadow-teal-600/20"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-xs transition-all hover:shadow-teal-600/20"
                 >
                   Register
                 </Link>

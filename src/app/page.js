@@ -76,10 +76,33 @@ export default async function HomePage() {
 
       {/* 3 Core Roles Section */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Dedicated Portals for Every Role</h2>
           <p className="text-slate-500 text-sm mt-2">Designed with role-based access control, secure actions, and zero clutter.</p>
         </div>
+
+        {/* Active Session Notification if signed in */}
+        {user && (
+          <div className="mb-8 p-4 rounded-2xl bg-teal-50 border border-teal-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <div>
+                <p className="text-xs font-semibold text-teal-800">
+                  Active Session: Signed in as <strong className="text-slate-900">{user.name}</strong> ({user.role.toUpperCase()})
+                </p>
+                <p className="text-[11px] text-teal-700">{user.email}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/${user.role}/dashboard`}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-xs"
+              >
+                Go to My {user.role.toUpperCase()} Workspace →
+              </Link>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Patient Card */}
@@ -100,7 +123,7 @@ export default async function HomePage() {
               </ul>
             </div>
             <Link
-              href="/patient/dashboard"
+              href={user && user.role === 'patient' ? '/patient/dashboard' : '/login?portal=patient'}
               className="w-full py-2.5 text-center text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-xl transition-colors"
             >
               Enter Patient Portal
@@ -125,7 +148,7 @@ export default async function HomePage() {
               </ul>
             </div>
             <Link
-              href="/doctor/dashboard"
+              href={user && user.role === 'doctor' ? '/doctor/dashboard' : '/login?portal=doctor'}
               className="w-full py-2.5 text-center text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors"
             >
               Enter Doctor Workspace
@@ -150,7 +173,7 @@ export default async function HomePage() {
               </ul>
             </div>
             <Link
-              href="/admin/dashboard"
+              href={user && user.role === 'admin' ? '/admin/dashboard' : '/login?portal=admin'}
               className="w-full py-2.5 text-center text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors"
             >
               Enter Admin Portal

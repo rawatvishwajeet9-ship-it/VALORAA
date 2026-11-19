@@ -47,10 +47,10 @@ export default async function PatientDashboardPage() {
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-teal-600">Patient Dashboard</span>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-1">
-            Welcome back, {user.name}
+            Welcome back, {user?.name || 'Patient'}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Health ID: <span className="font-mono text-slate-700">VAL-PAT-{user._id.slice(-6).toUpperCase()}</span> • Blood Group: <span className="font-bold text-teal-700">{profile?.bloodGroup || 'Not specified'}</span>
+            Health ID: <span className="font-mono text-slate-700">VAL-PAT-{user?._id ? user._id.slice(-6).toUpperCase() : '000000'}</span> • Blood Group: <span className="font-bold text-teal-700">{profile?.bloodGroup || 'Not specified'}</span>
           </p>
         </div>
 

@@ -51,10 +51,10 @@ export default async function DoctorDashboardPage() {
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-1">
-            {user.name}
+            {user?.name || 'Doctor'}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Specialty: <span className="font-bold text-emerald-700">{profile?.specialty}</span> • License: <span className="font-mono text-slate-700">{profile?.licenseNumber}</span> • Fee: ₹{profile?.consultationFee}
+            Specialty: <span className="font-bold text-emerald-700">{profile?.specialty || 'General Medicine'}</span> • License: <span className="font-mono text-slate-700">{profile?.licenseNumber || 'MCI-PENDING'}</span> • Fee: ₹{profile?.consultationFee || 500}
           </p>
         </div>
 

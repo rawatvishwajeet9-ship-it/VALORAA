@@ -26,6 +26,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# persistent local database
+.data/
+
 # user uploaded files
 /public/uploads/valora/
 

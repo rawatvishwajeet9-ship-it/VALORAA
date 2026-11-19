@@ -60,9 +60,10 @@ export async function setSessionCookie(user) {
   });
 
   const cookieStore = await cookies();
+  const isSecure = process.env.COOKIE_SECURE === 'true' || Boolean(process.env.VERCEL);
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecure,
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 24 * 7, // 7 days
@@ -94,6 +95,14 @@ export async function getSessionUser() {
  */
 export async function clearSessionCookie() {
   const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+    expires: new Date(0),
+  });
   cookieStore.delete(SESSION_COOKIE_NAME);
 }
 

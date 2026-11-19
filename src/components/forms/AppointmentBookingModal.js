@@ -78,8 +78,8 @@ export default function AppointmentBookingModal({ isOpen, onClose, selectedDocto
     setIsSubmitting(false);
   };
 
-  // Min date is tomorrow
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Allow booking from today onwards
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Book Medical Consultation">
@@ -136,7 +136,7 @@ export default function AppointmentBookingModal({ isOpen, onClose, selectedDocto
             <div className="relative">
               <input
                 type="date"
-                min={tomorrow}
+                min={today}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required

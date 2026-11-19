@@ -11,7 +11,7 @@ import MedicalRecord from '@/models/MedicalRecord';
 import DoctorPatientAccess from '@/models/DoctorPatientAccess';
 import AuditLog from '@/models/AuditLog';
 import Review from '@/models/Review';
-import { requireAuth, requireRole } from '@/lib/auth';
+import { requireAuth, requireRole, setSessionCookie } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -22,8 +22,27 @@ export async function getDoctorDashboardData() {
     const session = await requireRole('doctor');
     await connectDB();
 
-    const doctorUser = await User.findById(session.id).select('-passwordHash').lean();
-    const doctorProfile = await Doctor.findOne({ userId: session.id }).lean();
+    let doctorUser = await User.findById(session.id).select('-passwordHash').lean();
+    if (!doctorUser && session.email) {
+      doctorUser = await User.findOne({ email: session.email }).select('-passwordHash').lean();
+    }
+    if (!doctorUser) {
+      await clearSessionCookie();
+      return { success: false, error: 'Session expired or doctor record not found. Please log in again.' };
+    }
+
+    let doctorProfile = await Doctor.findOne({ userId: doctorUser._id }).lean();
+    if (!doctorProfile) {
+      const created = await Doctor.create({
+        userId: doctorUser._id,
+        specialty: 'General Medicine',
+        licenseNumber: `MCI-${doctorUser._id.toString().slice(-6).toUpperCase()}`,
+        experienceYears: 1,
+        consultationFee: 500,
+        isVerified: false,
+      });
+      doctorProfile = created.toObject();
+    }
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -123,10 +142,17 @@ export async function updateDoctorProfile(formData) {
 
     const name = formData.get('name')?.toString().trim();
     const phone = formData.get('phone')?.toString().trim();
+    const avatar = formData.get('avatar')?.toString();
     const specialty = formData.get('specialty')?.toString().trim();
     const qualificationsRaw = formData.get('qualifications')?.toString();
-    const experienceYears = Number(formData.get('experienceYears')) || 1;
-    const consultationFee = Number(formData.get('consultationFee')) || 500;
+    const experienceYears = Number(formData.get('experienceYears'));
+    if (isNaN(experienceYears) || experienceYears < 1) {
+      return { success: false, error: 'Years of clinical experience cannot be 0. Minimum 1 year is required for doctors.' };
+    }
+    const consultationFee = Number(formData.get('consultationFee'));
+    if (isNaN(consultationFee) || consultationFee < 500) {
+      return { success: false, error: 'Consultation fee must be a minimum of ₹500. A fee of ₹0 is not allowed.' };
+    }
     const biography = formData.get('biography')?.toString().trim();
     const clinicName = formData.get('clinicName')?.toString().trim();
     const street = formData.get('street')?.toString().trim();
@@ -137,7 +163,14 @@ export async function updateDoctorProfile(formData) {
     const endHour = formData.get('endHour')?.toString() || '17:00';
     const availableDaysRaw = formData.get('availableDays')?.toString();
 
-    await User.findByIdAndUpdate(session.id, { name, phone });
+    const userUpdates = { name, phone };
+    if (avatar !== undefined) {
+      userUpdates.avatar = avatar;
+    }
+    const updatedUser = await User.findByIdAndUpdate(session.id, userUpdates, { new: true });
+    if (updatedUser) {
+      await setSessionCookie(updatedUser);
+    }
 
     const qualifications = qualificationsRaw
       ? qualificationsRaw.split(',').map((q) => q.trim()).filter(Boolean)
@@ -262,33 +295,11 @@ export async function getDoctorPatients() {
     const session = await requireRole('doctor');
     await connectDB();
 
-    // Find patients with appointments or granted access
-    let appointments = await Appointment.find({ doctorId: session.id })
+    // Find patients with appointments for this doctor only
+    const appointments = await Appointment.find({ doctorId: session.id })
       .populate('patientId', 'name email phone avatar')
       .sort({ appointmentDate: -1 })
       .lean();
-
-    // If this doctor has no appointments yet, link a patient so doctor has patients in caseload
-    if (appointments.length === 0) {
-      const anyPatient = await User.findOne({ role: 'patient' }).lean();
-      if (anyPatient) {
-        await Appointment.create({
-          patientId: anyPatient._id,
-          doctorId: session.id,
-          appointmentDate: new Date(),
-          timeSlot: '10:30 AM',
-          type: 'in-person',
-          status: 'confirmed',
-          reason: 'Comprehensive health checkup & prior records review',
-          fee: 800,
-        });
-
-        appointments = await Appointment.find({ doctorId: session.id })
-          .populate('patientId', 'name email phone avatar')
-          .sort({ appointmentDate: -1 })
-          .lean();
-      }
-    }
 
     const patientMap = new Map();
 
@@ -528,61 +539,9 @@ export async function getDoctorReviewsAction() {
     const session = await requireRole('doctor');
     await connectDB();
 
-    let reviews = await Review.find({ doctorId: session.id })
+    const reviews = await Review.find({ doctorId: session.id })
       .sort({ createdAt: -1 })
       .lean();
-
-    // Auto-seed initial realistic verified reviews if none exist
-    if (reviews.length === 0) {
-      const samplePatients = await User.find({ role: 'patient' }).limit(2).lean();
-      const p1 = samplePatients[0] || { name: 'Aarav Patel', _id: session.id };
-      const p2 = samplePatients[1] || { name: 'Ananya Sharma', _id: session.id };
-
-      await Review.create([
-        {
-          doctorId: session.id,
-          patientId: p1._id,
-          patientName: p1.name || 'Aarav Patel',
-          rating: 5,
-          comment:
-            'Extremely attentive and thorough doctor. Carefully reviewed all my past diagnostic reports, explained the diagnosis clearly, and provided an effective treatment plan with minimal medication.',
-          serviceType: 'Cardiovascular & Vitals Consultation',
-          isVerifiedVisit: true,
-          createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-          doctorReply: {
-            message:
-              'Thank you for your warm feedback Aarav! Please continue with the morning walks and prescribed dosage. Feel free to reach out for a follow-up review anytime.',
-            repliedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          },
-        },
-        {
-          doctorId: session.id,
-          patientId: p2._id,
-          patientName: p2.name || 'Ananya Sharma',
-          rating: 5,
-          comment:
-            'Very patient and professional. Addressed all my concerns about screen fatigue and tension headaches. The prescribed dosage schedule brought immediate relief.',
-          serviceType: 'Neurology & Headache Management',
-          isVerifiedVisit: true,
-          createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
-        },
-        {
-          doctorId: session.id,
-          patientId: p1._id,
-          patientName: 'Kunal Deshmukh',
-          rating: 4,
-          comment:
-            'Great diagnostic accuracy and minimal wait time. The digital prescription and report vault features in VALORA made following up seamless.',
-          serviceType: 'Annual General OPD Checkup',
-          isVerifiedVisit: true,
-          createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
-        },
-      ]);
-
-      reviews = await Review.find({ doctorId: session.id })
-        .sort({ createdAt: -1 })
-        .lean();
-    }
 
     const total = reviews.length;
     const avg = total > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / total).toFixed(1) : '5.0';

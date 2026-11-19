@@ -31,7 +31,10 @@ export default function ConsultationNoteModal({ isOpen, onClose, prefilledPatien
     setError('');
     setSuccess('');
 
-    const targetPatientId = prefilledPatient?._id || prefilledAppointment?.patientId?._id;
+    const targetPatientId =
+      prefilledPatient?._id ||
+      prefilledAppointment?.patientId?._id ||
+      prefilledAppointment?.patientId;
     if (!targetPatientId) {
       setError('Patient record is missing');
       setIsSubmitting(false);

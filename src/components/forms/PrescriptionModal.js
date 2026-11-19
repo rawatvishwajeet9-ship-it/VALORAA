@@ -54,7 +54,7 @@ export default function PrescriptionModal({ isOpen, onClose, targetPatient = nul
     setError('');
     setSuccess('');
 
-    const patientId = targetPatient?._id || targetPatient?.userId?._id;
+    const patientId = targetPatient?._id || targetPatient?.userId?._id || targetPatient?.userId;
     if (!patientId) {
       setError('Patient record is missing');
       setIsSubmitting(false);

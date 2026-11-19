@@ -14,8 +14,9 @@ export function isValidPassword(password) {
 
 export function isValidPhone(phone) {
   if (!phone) return true; // optional
-  const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/;
-  return phoneRegex.test(phone.trim());
+  const digitsOnly = phone.replace(/\D/g, '');
+  // Must be between 9 and 15 digits
+  return digitsOnly.length >= 9 && digitsOnly.length <= 15;
 }
 
 export const VALID_ROLES = ['patient', 'doctor', 'admin'];

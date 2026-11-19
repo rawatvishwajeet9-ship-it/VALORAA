@@ -228,16 +228,44 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="doc-specialty">Specialty *</label>
-              <select id="doc-specialty" class="form-control" required>
-                <option value="General Medicine">General Medicine</option>
-                <option value="Cardiology">Cardiology</option>
-                <option value="Neurology">Neurology</option>
-                <option value="Radiology">Radiology</option>
-                <option value="Orthopedics">Orthopedics</option>
-                <option value="Pediatrics">Pediatrics</option>
-                <option value="Dermatology">Dermatology</option>
+              <label class="form-label" for="doc-specialty">Specialty / Medical Profession *</label>
+              <select id="doc-specialty" class="form-control" required onchange="toggleCustomSpecialty(this, 'doc-specialty-custom-group', 'doc-specialty-custom')">
+                <option value="General Medicine">General Medicine / Internal Medicine</option>
+                <option value="Cardiology">Cardiology (Heart Care)</option>
+                <option value="Neurology">Neurology (Brain & Nerves)</option>
+                <option value="Neurosurgery">Neurosurgery</option>
+                <option value="Orthopedics">Orthopedics (Bone & Joint Surgery)</option>
+                <option value="Pediatrics">Pediatrics & Neonatology (Child Health)</option>
+                <option value="Gynecology & Obstetrics">Gynecology & Obstetrics (OB-GYN)</option>
+                <option value="Dermatology">Dermatology & Cosmetology (Skin & Hair)</option>
+                <option value="Oncology">Oncology & Hematology (Cancer Care)</option>
+                <option value="Ophthalmology">Ophthalmology (Eye Specialist & Surgeon)</option>
+                <option value="ENT">ENT / Otolaryngology (Ear, Nose, Throat)</option>
+                <option value="Psychiatry">Psychiatry & Behavioral Health</option>
+                <option value="Gastroenterology">Gastroenterology & Hepatology</option>
+                <option value="Pulmonology">Pulmonology (Respiratory / Chest Medicine)</option>
+                <option value="Nephrology">Nephrology (Kidney Care & Dialysis)</option>
+                <option value="Urology">Urology & Andrology (Urosurgery)</option>
+                <option value="Endocrinology">Endocrinology & Diabetology</option>
+                <option value="Rheumatology">Rheumatology (Autoimmune Diseases)</option>
+                <option value="General Surgery">General & Laparoscopic Surgery</option>
+                <option value="Plastic Surgery">Plastic & Reconstructive Surgery</option>
+                <option value="Radiology">Radiology & Diagnostic Imaging</option>
+                <option value="Anesthesiology">Anesthesiology & Critical Care</option>
+                <option value="Pathology">Pathology & Laboratory Medicine</option>
+                <option value="Emergency Medicine">Emergency & Trauma Care</option>
+                <option value="Dental Surgery">Dental Surgery & Oral Health (Dentist)</option>
+                <option value="Physiotherapy">Physiotherapy & Rehabilitation</option>
+                <option value="Ayurveda / Homeopathy">Ayurveda / Homeopathy / AYUSH Medicine</option>
+                <option value="Clinical Nutrition">Clinical Nutrition & Dietetics</option>
+                <option value="Infectious Diseases">Infectious Diseases Specialist</option>
+                <option value="Geriatric Medicine">Geriatric Medicine (Elderly Care)</option>
+                <option value="Other">Other (Specify Profession / Specialty)</option>
               </select>
+              <div id="doc-specialty-custom-group" style="display:none;margin-top:8px;">
+                <label class="form-label" for="doc-specialty-custom" style="font-size:0.75rem;font-weight:700;color:#0d9488;text-transform:uppercase;">Specify Medical Profession / Specialty *</label>
+                <input type="text" id="doc-specialty-custom" class="form-control" placeholder="e.g. Pediatric Neurosurgeon, Ayurvedic Physician, Sports Medicine...">
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" for="doc-qualifications">Qualifications *</label>

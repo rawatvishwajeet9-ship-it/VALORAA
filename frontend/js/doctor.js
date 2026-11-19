@@ -487,7 +487,21 @@ async function loadDoctorProfile() {
       updatePhoneDigitBadge(phoneInput.value);
     }
 
-    document.getElementById('doc-specialty').value = p.specialty || 'General Medicine';
+    const specSelect = document.getElementById('doc-specialty');
+    const customGroup = document.getElementById('doc-specialty-custom-group');
+    const customInput = document.getElementById('doc-specialty-custom');
+    if (specSelect) {
+      const currentSpec = p.specialty || 'General Medicine';
+      const availableVals = Array.from(specSelect.options).map(o => o.value);
+      if (availableVals.includes(currentSpec)) {
+        specSelect.value = currentSpec;
+        if (customGroup) customGroup.style.display = 'none';
+      } else {
+        specSelect.value = 'Other';
+        if (customGroup) customGroup.style.display = 'block';
+        if (customInput) customInput.value = currentSpec;
+      }
+    }
     document.getElementById('doc-qualifications').value = (p.qualifications || []).join(', ') || 'MBBS';
     document.getElementById('doc-experience').value = p.experience_years || 2;
     document.getElementById('doc-fee').value = p.consultation_fee || 500;
@@ -534,10 +548,21 @@ async function saveDoctorProfile(e) {
 
   const qualsRaw = document.getElementById('doc-qualifications').value;
 
+  let specialty = document.getElementById('doc-specialty').value;
+  if (specialty === 'Other') {
+    const custom = (document.getElementById('doc-specialty-custom')?.value || '').trim();
+    if (!custom) {
+      showToast('Please enter your specific medical profession / specialty.', 'error');
+      document.getElementById('doc-specialty-custom').focus();
+      return;
+    }
+    specialty = custom;
+  }
+
   const data = {
     name: document.getElementById('doc-name').value.trim(),
     phone: phoneRaw,
-    specialty: document.getElementById('doc-specialty').value,
+    specialty: specialty,
     qualifications: qualsRaw.split(',').map(q => q.trim()).filter(Boolean),
     experience_years: expVal,
     consultation_fee: feeVal,

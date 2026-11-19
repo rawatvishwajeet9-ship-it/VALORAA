@@ -78,6 +78,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
+ * Toggle Custom Specialty Field when "Other" is selected
+ */
+function toggleCustomSpecialty(selectEl, customContainerId, customInputId) {
+  const container = document.getElementById(customContainerId);
+  const input = customInputId ? document.getElementById(customInputId) : (container ? container.querySelector('input') : null);
+  if (!container) return;
+  if (selectEl.value === 'Other') {
+    container.style.display = 'block';
+    if (input) {
+      input.setAttribute('required', 'required');
+      input.focus();
+    }
+  } else {
+    container.style.display = 'none';
+    if (input) {
+      input.removeAttribute('required');
+      input.value = '';
+    }
+  }
+}
+window.toggleCustomSpecialty = toggleCustomSpecialty;
+
+/**
  * Render Avatar Image or Initials dynamically in any container
  */
 function updateUserAvatarDisplay(avatarUrl, userName) {

@@ -134,7 +134,7 @@ def register():
         return jsonify({"success": False, "message": "An account with this email already exists."}), 409
 
     password_hash = generate_password_hash(password)
-    initial_status = "pending_verification" if role == "doctor" else "active"
+    initial_status = "active"
 
     cursor = conn.cursor()
     cursor.execute("""
@@ -186,7 +186,7 @@ def register():
             json.dumps(data.get("available_days", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"])),
             data.get("start_time", "09:00"),
             data.get("end_time", "17:00"),
-            0 # unverified by default
+            1 # verified immediately so new doctor shows up in directory
         ))
 
     conn.execute(

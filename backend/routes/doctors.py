@@ -17,7 +17,7 @@ def list_doctors():
         SELECT d.*, u.name, u.email, u.phone, u.avatar, u.status as user_status
         FROM doctors d
         JOIN users u ON d.user_id = u.id
-        WHERE d.is_verified = 1 AND u.status = 'active'
+        WHERE u.status != 'suspended'
     """
     params = []
 
@@ -35,7 +35,7 @@ def list_doctors():
         sql += " AND d.consultation_fee <= ?"
         params.append(max_fee)
 
-    sql += " ORDER BY d.rating DESC, d.experience_years DESC"
+    sql += " ORDER BY d.id DESC, d.rating DESC"
 
     conn = get_db()
     rows = conn.execute(sql, params).fetchall()

@@ -1,181 +1,148 @@
 # VALORA – Healthcare Management & Digital Medical Records Platform
 
-VALORA is an enterprise-grade, modern, responsive healthcare management and digital medical records platform connecting patients, licensed medical practitioners, and hospital administrators.
+VALORA is a full-featured, responsive healthcare management and digital medical records platform connecting patients, licensed medical practitioners, and hospital administrators.
+
+This project is built using a clean, accessible, and robust architecture:
+- **Frontend:** Vanilla HTML5, CSS3 (Modern Glassmorphic Healthcare Design System), JavaScript (ES6 Modules & Fetch API)
+- **Backend:** Python (Flask Modular Architecture with Blueprints)
+- **Database:** SQLite3 (`valora.db`) with relational integrity, foreign keys, and indexes
+- **Document Vault:** Local encrypted file storage supporting diagnostic PDFs, X-rays, and MRI scans
 
 ---
 
-## 1. Technology Stack
+## 1. Project Structure
 
-- **Frontend & Framework:** Next.js (App Router), React.js
-- **Programming Language:** JavaScript JSX (Strictly no TypeScript, no separate backend server, no Python/Flask, no SQL)
-- **Styling:** Tailwind CSS with custom healthcare palette and glassmorphism
-- **Database:** MongoDB Atlas / Local MongoDB with Mongoose ODM
-- **Server Communication:** Next.js Server Actions (`'use server'`)
-- **Authentication & Sessions:** Auth.js compatible session management with encrypted JWT cookies and bcryptjs
-- **Visual Analytics:** Chart.js & `react-chartjs-2`
-- **Medical File Storage:** Cloudinary integration with local fallback vault
-
----
-
-## 2. Default Seed Credentials
-
-For evaluation and testing, VALORA comes with pre-seeded demo accounts. Click **"Initialize Sample Data"** on the home page or login with:
-
-| Role | Email | Password | Details |
-| :--- | :--- | :--- | :--- |
-| **System Admin** | `admin@valora.health` | `Valora@123` | Institutional governance, doctor verification & platform analytics |
-| **Physician (Cardiology)** | `dr.sharma@valora.health` | `Valora@123` | Verified cardiologist with active appointment queue |
-| **Physician (Neurology)** | `dr.priya@valora.health` | `Valora@123` | Verified neurologist with consultation notes |
-| **Patient** | `patient@valora.health` | `Valora@123` | Pre-configured medical records, vitals, prescriptions & bookings |
-
----
-
-## 3. Project Structure
+Organized into dedicated directories for backend modules, SQLite database, uploads, and individual role-based HTML pages:
 
 ```
 VALORA/
 │
-├── public/
-│   ├── images/
-│   ├── icons/
-│   ├── logo/
-│   └── uploads/                  # Medical vault document fallbacks
-│
-├── src/
-│   │
-│   ├── app/
-│   │   ├── layout.js             # Root layout with user session provider & navigation
-│   │   ├── page.js               # Landing page with portal cards & quick login
-│   │   ├── globals.css           # Tailwind directives & medical design tokens
-│   │   │
-│   │   ├── login/                # Authentication page with 1-click demo logins
-│   │   ├── register/             # Unified Patient and Doctor registration tabs
-│   │   │
-│   │   ├── patient/
-│   │   │   ├── layout.js         # Patient protected layout & navigation sidebar
-│   │   │   ├── dashboard/        # Patient overview & quick action modals
-│   │   │   ├── profile/          # Health parameters, blood group & allergies
-│   │   │   ├── doctors/          # Verified physician search directory
-│   │   │   ├── appointments/     # Appointment scheduler & cancellation
-│   │   │   ├── medical-records/  # Encrypted vault (X-rays, MRI, CT scans, Lab reports)
-│   │   │   ├── prescriptions/    # Active electronic prescriptions & dosages
-│   │   │   └── history/          # Longitudinal medical timeline
-│   │   │
-│   │   ├── doctor/
-│   │   │   ├── layout.js         # Physician protected layout & sidebar
-│   │   │   ├── dashboard/        # Daily OPD queue, patient metrics & stats
-│   │   │   ├── profile/          # Qualifications, clinic address & OPD hours
-│   │   │   ├── patients/         # Authorized patient chart reviews
-│   │   │   ├── appointments/     # Schedule management & consultation launcher
-│   │   │   ├── consultations/    # Clinical observations, vitals & diagnosis
-│   │   │   └── prescriptions/    # Multi-drug electronic prescription generator
-│   │   │
-│   │   └── admin/
-│   │       ├── layout.js         # Governance workspace layout & sidebar
-│   │       ├── dashboard/        # Platform KPI cards & real-time audit stream
-│   │       ├── patients/         # Patient account management & status toggling
-│   │       ├── doctors/          # Physician license verification center
-│   │       ├── appointments/     # Hospital-wide appointment supervision
-│   │       └── analytics/        # Chart.js visualizations
-│   │
-│   ├── components/
-│   │   ├── common/               # Navbar, Sidebar, Footer, NotificationBanner
-│   │   ├── patient/              # Specialized patient UI widgets
-│   │   ├── doctor/               # Clinical examination tools
-│   │   ├── admin/                # Governance controls
-│   │   ├── forms/                # Booking, Record Upload, Clinical Notes & Rx modals
-│   │   ├── charts/               # Chart.js registration & reusable chart widgets
-│   │   └── ui/                   # StatCard, Badge, Modal dialog
-│   │
-│   ├── actions/                  # Next.js Server Actions
-│   │   ├── authActions.js
-│   │   ├── patientActions.js
-│   │   ├── doctorActions.js
-│   │   ├── appointmentActions.js
-│   │   ├── medicalRecordActions.js
-│   │   ├── prescriptionActions.js
-│   │   └── adminActions.js
-│   │
-│   ├── models/                   # Mongoose Database Collections
-│   │   ├── User.js
-│   │   ├── Patient.js
-│   │   ├── Doctor.js
-│   │   ├── Appointment.js
-│   │   ├── MedicalRecord.js
-│   │   ├── Consultation.js
-│   │   ├── Prescription.js
-│   │   ├── DoctorPatientAccess.js
-│   │   └── AuditLog.js
-│   │
-│   ├── lib/
-│   │   ├── mongodb.js            # Cached connection pool for Server Actions
-│   │   ├── auth.js               # JWT session signing & password hashing
-│   │   ├── cloudStorage.js       # Cloudinary / encrypted local vault storage
-│   │   ├── seed.js               # Auto-seeder for sample healthcare network
-│   │   └── validations.js        # Form validation schemas & specialty lists
-│   │
-│   ├── hooks/
-│   ├── context/
-│   └── utils/
-│
-├── .env.local                    # Local environment config
-├── .env.example
+├── app.py                         # Root entry point to launch platform (python app.py)
+├── requirements.txt               # Python package dependencies (Flask, flask-cors, werkzeug)
+├── README.md                      # Platform documentation and architecture guide
 ├── .gitignore
-├── package.json
-├── next.config.js
-└── README.md
+│
+├── backend/
+│   ├── app.py                     # Flask application factory, route handlers & static server
+│   ├── config.py                  # Database paths, secret keys, upload configurations
+│   ├── requirements.txt           # Backend package specifications
+│   │
+│   ├── database/
+│   │   ├── __init__.py
+│   │   ├── connection.py          # SQLite connection manager & master admin setup
+│   │   └── schema.sql             # Relational DDL schema
+│   │
+│   └── routes/
+│       ├── __init__.py
+│       ├── auth.py                # Login, Register, Session check, Logout
+│       ├── patients.py            # Patient profile, dashboard, timeline history
+│       ├── doctors.py             # Specialist directory search, doctor queue & chart review
+│       ├── appointments.py        # Booking visits, slot checking, status updates
+│       ├── records.py             # Medical vault upload, retrieval, and deletion
+│       ├── consultations.py       # Vitals logger, clinical diagnosis, treatment plans
+│       ├── prescriptions.py       # Multi-drug digital Rx generator
+│       └── admin.py               # Doctor license verification, patient governance & analytics
+│
+├── database/
+│   ├── schema.sql                 # SQL table definitions, constraints & indexes
+│   └── valora.db                  # Live SQLite database
+│
+├── frontend/
+│   ├── index.html                 # Public landing page with clinical portal cards
+│   ├── login.html                 # Sign-in portal with email and password
+│   ├── register.html              # Unified patient & doctor registration with role-specific tabs
+│   │
+│   ├── css/
+│   │   └── style.css              # Master healthcare CSS design system
+│   │
+│   ├── js/
+│   │   ├── api.js                 # Central fetch API client & toast notifications
+│   │   ├── auth.js                # Auth state, route guard & user session management
+│   │   ├── common.js              # Navbar/sidebar active highlights, modal helpers & formatters
+│   │   ├── patient.js             # Patient portal state & appointment/vault interactions
+│   │   ├── doctor.js              # Physician workbench, OPD queue, vitals & Rx generator
+│   │   └── admin.js               # License verification, user governance & analytics
+│   │
+│   ├── patient/
+│   │   ├── dashboard.html         # Overview stats, vitals baseline & upcoming schedule
+│   │   ├── profile.html           # Full medical profile (blood group, allergies, emergency contacts)
+│   │   ├── doctors.html           # Find & filter specialists by specialty, city, fee & book visits
+│   │   ├── appointments.html      # Schedule list with status filters & cancellation
+│   │   ├── records.html           # Encrypted diagnostic vault (X-rays, MRI, CT scans, Lab reports)
+│   │   ├── prescriptions.html     # Active drug orders with dosage frequencies & print view
+│   │   └── history.html           # Longitudinal medical timeline of consultations & vitals
+│   │
+│   ├── doctor/
+│   │   ├── dashboard.html         # Live OPD queue, patient metrics, launch consultation modal
+│   │   ├── appointments.html      # Master appointment schedule with confirm/consult actions
+│   │   ├── consultations.html     # Clinical examination history with vitals and diagnosis
+│   │   ├── prescriptions.html     # Issued digital Rx ledger with print preview
+│   │   ├── patients.html          # Authorized patient roster with vault document inspection
+│   │   └── profile.html           # Clinical credentials, OPD hours, and consultation fee settings
+│   │
+│   ├── admin/
+│   │   ├── dashboard.html         # Hospital KPI cards & live audit activity stream
+│   │   ├── doctors.html           # Medical license verification center (Approve/Revoke/Suspend)
+│   │   ├── patients.html          # Patient governance & account state toggling
+│   │   ├── appointments.html      # Hospital-wide appointment oversight & fees ledger
+│   │   └── analytics.html         # Visual specialty distributions & status breakdowns
+│   │
+│   └── logo/
+│       └── logo.svg               # VALORA brand logo
+│
+└── uploads/                       # Encrypted medical vault document storage
 ```
 
 ---
 
-## 4. Key Functional Modules
+## 2. Authentication & User Flow
 
-### A. Patient Module
-- **Self-Service Registration & Onboarding:** Collects vital metrics, blood group, allergies, and emergency points of contact.
-- **Find Doctors:** Search specialists by clinical domain (Cardiology, Neurology, Orthopedics, Pediatrics, etc.), city, and consult fee.
-- **Appointment Scheduling:** Book conflict-free time slots for in-person or teleconsultation visits.
-- **Diagnostic Vault:** Upload and review high-resolution X-rays, MRI scans, CT scans, sonographies, and PDF pathology reports.
-- **Prescription Center:** Real-time view of active drug orders with frequencies (e.g. `1-0-1`) and dietary instructions.
-- **Medical Timeline:** Longitudinal chronological audit trail of consultations, vital checks, and treatments.
+VALORA supports registration and authentication for both **Patients** and **Physicians**:
 
-### B. Doctor Module
-- **OPD Workbench:** Live patient queue with quick action buttons to begin examinations.
-- **Clinical Consultations & Vitals:** Log Blood Pressure, Heart Rate, Temperature, SpO2, and Weight alongside clinical observations.
-- **Digital Rx Generator:** Prescribe multi-drug schedules with duration, dosage, and diagnostic lab recommendations.
-- **Patient Chart Access:** Review permitted patient medical histories and previous hospital records.
-- **Availability Management:** Customize consultation hours, operating days, and clinic address.
+1. **Patient Registration:**
+   - Go to [Register Page](http://127.0.0.1:5000/register.html) & select **"Patient Registration"**.
+   - Fill in your name, email, password, phone, date of birth, blood group, allergies, and emergency contact.
+   - Upon registration, log in at [Sign In](http://127.0.0.1:5000/login.html) to access your patient dashboard.
 
-### C. Admin Governance Module
-- **Doctor Verification:** Review medical practitioner license numbers (MCI/NMC) and grant verified status.
-- **Account Governance:** Toggle account status (`active` / `suspended`) across patients and doctors.
-- **Appointment Oversight:** Platform-wide oversight of bookings, reschedules, and cancellations.
-- **Chart.js Analytics Dashboard:**
-  - Monthly appointment volumes
-  - Patient registration growth curves
-  - Appointment status distribution (Doughnut)
-  - Doctor specialty distribution (Horizontal bar)
-  - Medical vault record categorization (Doughnut)
+2. **Doctor Registration & Verification:**
+   - Go to [Register Page](http://127.0.0.1:5000/register.html) & select **"Doctor / Physician"**.
+   - Fill in your medical license number (MCI/NMC), specialty, qualifications, experience, clinic details, and consultation fee.
+   - For safety and regulation, new doctors are initialized under `pending_verification`.
+   - The hospital administrator verifies and approves doctors in the **Doctor Verification Center** before they are listed in patient directories.
+
+3. **Master Hospital Administrator:**
+   - Initialized during database creation for institutional governance.
+   - **Email:** `admin@valora.health`
+   - **Password:** `Valora@123`
 
 ---
 
-## 5. Getting Started
+## 3. How to Run the Platform
 
-### 1. Install Dependencies
-```bash
-npm install
-```
+### Prerequisites
+- Python 3.8+ (Tested on Python 3.13)
+- Pip
 
-### 2. Configure Environment Variables
-Copy `.env.example` to `.env.local`:
-```bash
-cp .env.example .env.local
-```
-Update your `MONGODB_URI` (MongoDB Atlas or local `mongodb://127.0.0.1:27017/valora`).
+### Steps
+1. Navigate to the project root directory:
+   ```bash
+   cd c:\Users\rawat\OneDrive\Documents\PROJECTS\VALORA
+   ```
 
-### 3. Start the Development Server
-```bash
-npm run dev
-```
+2. (Optional) Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser. Click **"Initialize Sample Data"** on the home page to immediately test all portals using the demo credentials!
+3. Launch the platform:
+   ```bash
+   python app.py
+   ```
 
+4. Access the web portals in your browser:
+   - **Homepage:** [http://127.0.0.1:5000/](http://127.0.0.1:5000/)
+   - **Sign In:** [http://127.0.0.1:5000/login.html](http://127.0.0.1:5000/login.html)
+   - **Register:** [http://127.0.0.1:5000/register.html](http://127.0.0.1:5000/register.html)
+   - **Patient Dashboard:** [http://127.0.0.1:5000/patient/dashboard.html](http://127.0.0.1:5000/patient/dashboard.html)
+   - **Doctor Workbench:** [http://127.0.0.1:5000/doctor/dashboard.html](http://127.0.0.1:5000/doctor/dashboard.html)
+   - **Admin Governance:** [http://127.0.0.1:5000/admin/dashboard.html](http://127.0.0.1:5000/admin/dashboard.html)

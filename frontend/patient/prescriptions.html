@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Electronic Prescriptions – VALORA Healthcare</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/logo/logo.svg">
+  <style>
+    @media print {
+      .top-navbar, .sidebar, .no-print { display: none !important; }
+      .app-container { display: block !important; }
+      .main-content { padding: 0 !important; }
+      .rx-card { border: 1px solid #000 !important; box-shadow: none !important; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="top-navbar">
+    <a href="/" class="top-brand">
+      <div class="top-brand-icon">
+        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <div>
+        <div class="top-brand-title">VALORA</div>
+        <div class="top-brand-subtitle">HEALTH SYSTEM</div>
+      </div>
+    </a>
+
+    <div class="top-user-area">
+      <span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:6px 12px;font-size:0.8rem;font-weight:600;">
+        My Workspace
+      </span>
+      <div class="user-meta-block">
+        <div class="user-meta-name-row">
+          <span class="user-display-name current-user-name">User</span>
+          <span class="role-badge patient">
+            <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Patient
+          </span>
+        </div>
+        <div class="user-display-email current-user-email">patient@example.com</div>
+      </div>
+      <div class="user-avatar-circle current-user-avatar">P</div>
+      <button class="btn-top-signout" onclick="handleLogout()" title="Sign Out">
+        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="app-container">
+    
+    <!-- Patient Workspace Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-title">PATIENT WORKSPACE</div>
+      <nav class="sidebar-nav">
+        <a href="/patient/dashboard.html" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+            Overview
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/patient/profile.html" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            My Health Profile
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/patient/doctors.html" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            Find Doctors
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/patient/appointments.html" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Appointments
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/patient/records.html" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Medical Records
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/patient/prescriptions.html" class="nav-link-item active">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+            Prescriptions
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/patient/history.html" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Medical History
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+      </nav>
+
+      <div style="padding:16px;border-top:1px solid var(--border-color);margin-top:auto;">
+        <button onclick="handleLogout()" style="background:transparent;border:none;color:#dc2626;font-size:0.85rem;font-weight:600;display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 4px;margin-bottom:12px;">
+          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </button>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:0.75rem;color:#64748b;line-height:1.4;">
+          <div style="display:flex;align-items:center;gap:6px;font-weight:700;color:#0d9488;margin-bottom:2px;">
+            <span style="display:inline-block;width:6px;height:6px;background:#10b981;border-radius:50%;"></span>
+            Encrypted &amp; HIPAA Compliant
+          </div>
+          All medical records and prescriptions are securely archived.
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:16px;">
+        <div>
+          <span style="font-size:0.75rem;font-weight:700;letter-spacing:0.05em;color:#0d9488;text-transform:uppercase;">PHARMACY ARCHIVE</span>
+          <h2 style="font-size:1.6rem;font-weight:800;color:var(--text-main);margin:4px 0;">Active Electronic Prescriptions</h2>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin:0;">Legally binding, electronically signed drug regimens and diagnostic requests</p>
+        </div>
+        <div class="no-print">
+          <button class="btn btn-secondary" onclick="window.print()">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+            Print All Records
+          </button>
+        </div>
+      </div>
+
+      <div id="prescriptions-container">
+        <div style="text-align:center;padding:40px;color:#64748b;">Loading electronic prescriptions...</div>
+      </div>
+    </main>
+
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/patient.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (checkAuth('patient')) {
+        loadPatientPrescriptions();
+      }
+    });
+  </script>
+</body>
+</html>

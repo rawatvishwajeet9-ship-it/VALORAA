@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authorized Patient Roster – VALORA Health System</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/logo/logo.svg">
+  <style>
+    .patient-search-input-box {
+      position: relative;
+      margin-bottom: 24px;
+    }
+    .patient-search-input-box input {
+      padding-left: 42px;
+      height: 48px;
+      border-radius: 12px;
+      font-size: 0.92rem;
+    }
+    .patient-search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body style="background:#f8fafc;">
+
+  <!-- Full-Width Top Navbar -->
+  <header class="top-navbar">
+    <a href="/" class="top-brand">
+      <div class="top-brand-icon">
+        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+      </div>
+      <div>
+        <div class="top-brand-title">VALORA</div>
+        <div class="top-brand-subtitle">HEALTH SYSTEM</div>
+      </div>
+    </a>
+
+    <div class="top-user-area">
+      <span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:6px 12px;font-size:0.8rem;font-weight:600;">
+        My Workspace
+      </span>
+      <div class="user-meta-block">
+        <div class="user-meta-name-row">
+          <span class="user-display-name current-user-name">dr harry</span>
+          <span class="role-badge doctor">
+            <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>
+            Doctor
+          </span>
+        </div>
+        <div class="user-display-email current-user-email">harry@gmail.com</div>
+      </div>
+      <div class="user-avatar-circle current-user-avatar">D</div>
+      <button class="btn-top-signout" onclick="handleLogout()" title="Sign Out">
+        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="app-container">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-title">DOCTOR WORKSPACE</div>
+      <nav class="sidebar-nav">
+        <a href="/doctor/dashboard.html" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+            Overview
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/doctor/profile.html" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>
+            Doctor Profile
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/doctor/patients.html" class="nav-link-item active">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            My Patients
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/doctor/appointments.html" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Appointments
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+        <a href="/doctor/profile.html#reviews-section" class="nav-link-item">
+          <div class="nav-link-left">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Patient Reviews
+          </div>
+          <span class="nav-link-chevron">&rsaquo;</span>
+        </a>
+      </nav>
+
+      <div style="padding:16px;border-top:1px solid var(--border-color);margin-top:auto;">
+        <button onclick="handleLogout()" style="background:transparent;border:none;color:#dc2626;font-size:0.85rem;font-weight:600;display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 4px;margin-bottom:12px;">
+          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </button>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:0.75rem;color:#64748b;line-height:1.4;">
+          <div style="display:flex;align-items:center;gap:6px;font-weight:700;color:#0d9488;margin-bottom:2px;">
+            <span style="display:inline-block;width:6px;height:6px;background:#10b981;border-radius:50%;"></span>
+            Encrypted &amp; HIPAA Compliant
+          </div>
+          All medical records and consultations are encrypted.
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <div class="page-header-row">
+        <div class="page-header-left">
+          <div class="page-pretitle">CLINICAL CASELOAD</div>
+          <h1 class="page-main-title">Authorized Patient Roster</h1>
+          <div class="page-subtitle-meta">
+            Review clinical profiles, medical records, and previous consultations for patients under your active clinical care.
+          </div>
+        </div>
+      </div>
+
+      <!-- Search Input Box -->
+      <div class="patient-search-input-box">
+        <span class="patient-search-icon">
+          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        </span>
+        <input type="text" class="form-control" placeholder="Search authorized patients by name, email, or blood group..." oninput="filterPatientsRoster(this.value)">
+      </div>
+
+      <!-- Patients Grid -->
+      <div id="doctor-patients-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(420px, 1fr));gap:20px;">
+        <div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;">Loading authorized patient caseload...</div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal: Record Clinical Consultation & Vitals -->
+  <div class="modal-overlay" id="modal-consultation">
+    <div class="modal-container" style="max-width:720px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Record Clinical Consultation &amp; Vitals</h3>
+        <button type="button" class="btn-close" data-close-modal>&times;</button>
+      </div>
+      <form id="consultation-form" onsubmit="submitConsultation(event)">
+        <div class="modal-body">
+          <input type="hidden" id="consult-appt-id">
+          <input type="hidden" id="consult-patient-id">
+
+          <div style="background:#e6f7f5;border:1px solid #99f6e4;border-radius:10px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div style="font-size:0.9rem;font-weight:700;color:#0f172a;">
+              Patient: <span id="consult-patient-name-display">aman</span>
+            </div>
+            <span id="consult-timeslot-badge" class="badge" style="background:#ffffff;color:#0d9488;font-weight:700;">
+              Clinical Consultation
+            </span>
+          </div>
+
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:18px;">
+            <div style="font-size:0.75rem;font-weight:800;letter-spacing:0.05em;color:#334155;text-transform:uppercase;margin-bottom:10px;">
+              RECORDED PATIENT VITALS
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:10px;">
+              <div>
+                <label class="form-label" style="font-size:0.72rem;">Blood Pressure</label>
+                <input type="text" id="consult-bp" class="form-control" value="120/80 mmHg" required>
+              </div>
+              <div>
+                <label class="form-label" style="font-size:0.72rem;">Pulse (bpm)</label>
+                <input type="number" id="consult-hr" class="form-control" value="72" min="40" max="220" required>
+              </div>
+              <div>
+                <label class="form-label" style="font-size:0.72rem;">Temp (&deg;F)</label>
+                <input type="number" step="0.1" id="consult-temp" class="form-control" value="98.6" min="90.0" max="108.0" required>
+              </div>
+              <div>
+                <label class="form-label" style="font-size:0.72rem;">SpO2 (%)</label>
+                <input type="number" id="consult-spo2" class="form-control" value="99" min="70" max="100" required>
+              </div>
+              <div>
+                <label class="form-label" style="font-size:0.72rem;">Weight (kg)</label>
+                <input type="number" step="0.5" id="consult-weight" class="form-control" value="70" min="2" max="400">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="consult-diagnosis" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">CLINICAL DIAGNOSIS *</label>
+              <input type="text" id="consult-diagnosis" class="form-control" placeholder="e.g. Acute Bronchitis, Stage 1 Hypertension" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="consult-symptoms" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">SYMPTOMS REPORTED</label>
+              <input type="text" id="consult-symptoms" class="form-control" placeholder="e.g. Cough, Mild Dyspnea, Fatigue (comma separated)">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="consult-notes" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">CLINICAL EXAMINATION &amp; NOTES</label>
+            <textarea id="consult-notes" class="form-control" rows="3" placeholder="Detailed clinical evaluation, chest sounds, abdominal examination..."></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="consult-treatment" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">TREATMENT &amp; MANAGEMENT PLAN</label>
+              <textarea id="consult-treatment" class="form-control" rows="2" placeholder="Prescribed rest, dietary adjustments, hydration..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="consult-followup" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">FOLLOW-UP REVIEW DATE</label>
+              <input type="date" id="consult-followup" class="form-control">
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary" style="padding:9px 24px;">Save Consultation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Issue Digital Prescription (Rx) -->
+  <div class="modal-overlay" id="modal-prescription">
+    <div class="modal-container" style="max-width:760px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Issue Digital Prescription (Rx)</h3>
+        <button type="button" class="btn-close" data-close-modal>&times;</button>
+      </div>
+      <form id="prescription-form" onsubmit="submitPrescription(event)">
+        <div class="modal-body">
+          <input type="hidden" id="rx-patient-id">
+          <input type="hidden" id="rx-consult-id">
+          <input type="hidden" id="rx-appt-id">
+
+          <div style="background:#e6f7f5;border:1px solid #99f6e4;border-radius:10px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div id="rx-patient-name-banner" style="font-size:0.9rem;font-weight:700;color:#0f172a;">
+              Patient: aman (aman@gmail.com)
+            </div>
+            <span class="badge" style="background:#ffffff;color:#0d9488;font-weight:700;">Digital Rx Authorized</span>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <label class="form-label" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;margin:0;">PRESCRIBED MEDICATIONS</label>
+            <button type="button" class="btn btn-sm" style="background:#e6f7f5;color:#0d9488;border:1px solid #99f6e4;" onclick="addMedicationRow()">
+              + Add Drug
+            </button>
+          </div>
+
+          <div id="medications-container">
+            <div class="form-row" style="margin-bottom:10px;display:grid;grid-template-columns:2fr 1.2fr 1.2fr 1fr 2fr auto;gap:8px;align-items:center;">
+              <input type="text" class="form-control med-name" placeholder="e.g. Amoxicillin, Paracetamol" required>
+              <input type="text" class="form-control med-dosage" placeholder="1 tablet (500mg)" required>
+              <input type="text" class="form-control med-freq" placeholder="Twice daily (1-0-1)" required>
+              <input type="text" class="form-control med-duration" placeholder="5 days" required>
+              <input type="text" class="form-control med-inst" placeholder="Take after meals with water">
+              <button type="button" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;padding:6px 10px;border-radius:6px;" onclick="this.parentElement.remove()">&times;</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:16px;">
+            <label class="form-label" for="rx-lab-tests" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">DIAGNOSTIC INVESTIGATIONS / LAB TESTS ADVISED</label>
+            <input type="text" id="rx-lab-tests" class="form-control" placeholder="e.g. Fasting Blood Sugar, HbA1c, Serum Creatinine (comma separated)">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="rx-general-advice" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">GENERAL CLINICAL ADVICE &amp; DIETARY PRECAUTIONS</label>
+            <textarea id="rx-general-advice" class="form-control" rows="2" placeholder="Drink adequate water, complete the full antibiotic course, and rest.">Drink adequate water, complete the full antibiotic course, and rest.</textarea>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary" style="padding:9px 24px;">Issue Prescription</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Upload Medical Document to Vault (Exact Velo Design) -->
+  <div class="modal-overlay" id="modal-upload-record">
+    <div class="modal-container" style="max-width:680px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Upload Medical Document to Vault</h3>
+        <button type="button" class="btn-close" data-close-modal>&times;</button>
+      </div>
+      <form id="upload-record-form" onsubmit="handleDoctorUploadRecord(event)">
+        <div class="modal-body">
+          <input type="hidden" id="upload-target-patient-id">
+
+          <div class="form-group">
+            <label class="form-label" for="rec-title" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">RECORD TITLE *</label>
+            <input type="text" id="rec-title" class="form-control" placeholder="e.g. Brain MRI T2 Contrast, Fasting Lipid Profile, Chest X-Ray" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="rec-type" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">DOCUMENT CATEGORY *</label>
+              <select id="rec-type" class="form-control" required>
+                <option value="lab_report">Blood / Lab Diagnostic Report</option>
+                <option value="xray_mri">Radiology / X-Ray / MRI</option>
+                <option value="prescription">Prescription</option>
+                <option value="discharge_summary">Discharge Summary</option>
+                <option value="clinical_note">Clinical Note</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="rec-facility" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">DIAGNOSTIC CENTER / HOSPITAL</label>
+              <input type="text" id="rec-facility" class="form-control" value="VALORA Health Diagnostics">
+            </div>
+          </div>
+
+          <!-- File Upload Dropzone -->
+          <div class="form-group">
+            <label class="form-label" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">SELECT MEDICAL FILE (PDF, DICOM, JPG, PNG) *</label>
+            <div style="border:2px dashed #99f6e4;border-radius:14px;padding:28px 20px;text-align:center;background:#f0fdfa;">
+              <div style="width:48px;height:48px;border-radius:14px;background:#e6f7f5;color:#0d9488;margin:0 auto 12px auto;display:flex;align-items:center;justify-content:center;">
+                <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              </div>
+              <div style="font-weight:700;font-size:0.95rem;color:#0f172a;margin-bottom:4px;">
+                Click to browse device library or drop report here
+              </div>
+              <div style="font-size:0.78rem;color:#64748b;margin-bottom:14px;">
+                Supported: PDF, DICOM, JPG, PNG up to 25MB
+              </div>
+              <input type="file" id="rec-file-input" style="display:none;" onchange="updateSelectedFileName(this)">
+              <button type="button" class="btn" style="background:#ffffff;border:1px solid #99f6e4;color:#0d9488;font-weight:700;" onclick="document.getElementById('rec-file-input').click()">
+                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Browse System Files
+              </button>
+              <div id="selected-file-display" style="font-size:0.8rem;color:#0d9488;margin-top:8px;font-weight:600;"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="rec-tags" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">TAGS (COMMA SEPARATED)</label>
+            <input type="text" id="rec-tags" class="form-control" placeholder="e.g. Radiology, Cholesterol, Annual Checkup">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="rec-summary" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">CLINICAL SUMMARY / RADIOLOGIST NOTES</label>
+            <textarea id="rec-summary" class="form-control" rows="2" placeholder="Key observations, reference ranges, findings..."></textarea>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary" style="padding:9px 24px;">Save &amp; Secure in Vault</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: View Patient Records -->
+  <div class="modal-overlay" id="modal-patient-records">
+    <div class="modal-container" style="max-width:680px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Medical Records: <span id="records-modal-patient-name">Patient</span></h3>
+        <button type="button" class="btn-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body" id="modal-patient-records-list"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/doctor.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth('doctor');
+      loadDoctorPatients();
+    });
+
+    function openDoctorUploadModal(patientId, patientName) {
+      document.getElementById('upload-target-patient-id').value = patientId;
+      openModal('modal-upload-record');
+    }
+
+    function updateSelectedFileName(input) {
+      const display = document.getElementById('selected-file-display');
+      if (input.files && input.files[0]) {
+        display.textContent = `Selected: ${input.files[0].name} (${(input.files[0].size/1024).toFixed(1)} KB)`;
+      } else {
+        display.textContent = '';
+      }
+    }
+
+    async function handleDoctorUploadRecord(e) {
+      e.preventDefault();
+      const patientId = document.getElementById('upload-target-patient-id').value;
+      const fileInput = document.getElementById('rec-file-input');
+
+      const formData = new FormData();
+      formData.append('patient_id', patientId);
+      formData.append('title', document.getElementById('rec-title').value.trim());
+      formData.append('record_type', document.getElementById('rec-type').value);
+      formData.append('facility_name', document.getElementById('rec-facility').value.trim());
+      formData.append('description', document.getElementById('rec-summary').value.trim());
+      formData.append('tags', document.getElementById('rec-tags').value.trim());
+
+      if (fileInput.files[0]) {
+        formData.append('file', fileInput.files[0]);
+      }
+
+      try {
+        const res = await api.upload('/records', formData);
+        if (res.success) {
+          closeModal('modal-upload-record');
+          showToast('Medical document saved & secured in vault!', 'success');
+        }
+      } catch (error) {
+        showToast(error.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

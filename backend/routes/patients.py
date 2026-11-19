@@ -1,0 +1,293 @@
+import re
+import json
+from flask import Blueprint, request, jsonify
+from backend.database.connection import get_db
+from backend.routes.auth import get_current_user_from_req
+
+patient_bp = Blueprint("patients", __name__, url_prefix="/api/patient")
+
+@patient_bp.route("/profile", methods=["GET", "PUT"])
+def profile():
+    user = get_current_user_from_req()
+    if not user:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+
+    patient_user_id = user["id"]
+    conn = get_db()
+
+    if request.method == "GET":
+        target_id = request.args.get("patient_id")
+        if target_id and user["role"] in ["doctor", "admin"]:
+            patient_user_id = int(target_id)
+
+        user_row = conn.execute("SELECT id, name, email, phone, avatar, status FROM users WHERE id = ?", (patient_user_id,)).fetchone()
+        pat_row = conn.execute("SELECT * FROM patients WHERE user_id = ?", (patient_user_id,)).fetchone()
+
+        if not user_row or not pat_row:
+            conn.close()
+            return jsonify({"success": False, "message": "Patient profile not found."}), 404
+
+        data = dict(user_row)
+        data.update(dict(pat_row))
+        data["allergies"] = json.loads(pat_row["allergies"] or "[]")
+        data["chronic_conditions"] = json.loads(pat_row["chronic_conditions"] or "[]")
+
+        conn.close()
+        return jsonify({"success": True, "profile": data})
+
+    elif request.method == "PUT":
+        data = request.get_json() or {}
+
+        # Validate Phone
+        phone = data.get("phone")
+        if phone:
+            if re.search(r'[a-zA-Z]', str(phone)):
+                conn.close()
+                return jsonify({"success": False, "message": "Phone number cannot contain letters. Numbers only."}), 400
+            cleaned_phone = re.sub(r'[^0-9]', '', str(phone))
+            if len(cleaned_phone) < 9 or len(cleaned_phone) > 11:
+                conn.close()
+                return jsonify({"success": False, "message": "Phone number must be between 9 and 11 digits."}), 400
+            phone = cleaned_phone
+
+        # Validate Emergency Contact Phone
+        em_phone_raw = str(data.get("emergency_contact_phone") or "").strip()
+        em_phone = None
+        if em_phone_raw:
+            if re.search(r'[a-zA-Z]', em_phone_raw):
+                conn.close()
+                return jsonify({"success": False, "message": "Emergency contact phone cannot contain letters."}), 400
+            em_phone = re.sub(r'[^0-9]', '', em_phone_raw)
+            if len(em_phone) < 9 or len(em_phone) > 11:
+                conn.close()
+                return jsonify({"success": False, "message": "Emergency phone must be between 9 and 11 digits."}), 400
+
+        # Validate DOB
+        dob = data.get("date_of_birth")
+        if dob:
+            try:
+                yr = int(str(dob).split("-")[0])
+                if yr > 2022 or yr < 1900:
+                    conn.close()
+                    return jsonify({"success": False, "message": "Year of birth must be between 1900 and 2022."}), 400
+            except (ValueError, IndexError):
+                pass
+
+        # Validate Height (30 to 280 cm)
+        height = data.get("height_cm")
+        if height not in [None, "", "null"]:
+            try:
+                h_val = float(height)
+                if h_val < 30 or h_val > 280:
+                    conn.close()
+                    return jsonify({"success": False, "message": "Height must be between 30 cm and 280 cm."}), 400
+                height = h_val
+            except (ValueError, TypeError):
+                conn.close()
+                return jsonify({"success": False, "message": "Invalid height number."}), 400
+        else:
+            height = None
+
+        # Validate Weight (2 to 400 kg)
+        weight = data.get("weight_kg")
+        if weight not in [None, "", "null"]:
+            try:
+                w_val = float(weight)
+                if w_val < 2 or w_val > 400:
+                    conn.close()
+                    return jsonify({"success": False, "message": "Weight must be between 2 kg and 400 kg."}), 400
+                weight = w_val
+            except (ValueError, TypeError):
+                conn.close()
+                return jsonify({"success": False, "message": "Invalid weight number."}), 400
+        else:
+            weight = None
+
+        # Update users table (name, phone)
+        name = (data.get("name") or "").strip()
+        if name or phone:
+            conn.execute("""
+                UPDATE users SET 
+                    name = COALESCE(NULLIF(?, ''), name),
+                    phone = COALESCE(?, phone),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (name, phone, patient_user_id))
+
+        # Update patients table
+        allergies = json.dumps(data["allergies"]) if "allergies" in data else None
+        chronic = json.dumps(data["chronic_conditions"]) if "chronic_conditions" in data else None
+        em_phone = re.sub(r'[^0-9]', '', str(data.get("emergency_contact_phone") or ""))
+
+        conn.execute("""
+            UPDATE patients SET
+                date_of_birth = COALESCE(?, date_of_birth),
+                gender = COALESCE(?, gender),
+                blood_group = COALESCE(?, blood_group),
+                allergies = COALESCE(?, allergies),
+                chronic_conditions = COALESCE(?, chronic_conditions),
+                emergency_contact_name = COALESCE(?, emergency_contact_name),
+                emergency_contact_relation = COALESCE(?, emergency_contact_relation),
+                emergency_contact_phone = COALESCE(?, emergency_contact_phone),
+                street = COALESCE(?, street),
+                city = COALESCE(?, city),
+                state = COALESCE(?, state),
+                postal_code = COALESCE(?, postal_code),
+                country = COALESCE(?, country),
+                insurance_provider = COALESCE(?, insurance_provider),
+                insurance_policy_number = COALESCE(?, insurance_policy_number),
+                height_cm = ?,
+                weight_kg = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+        """, (
+            dob,
+            data.get("gender"),
+            data.get("blood_group"),
+            allergies,
+            chronic,
+            data.get("emergency_contact_name"),
+            data.get("emergency_contact_relation"),
+            em_phone if em_phone else None,
+            data.get("street"),
+            data.get("city"),
+            data.get("state"),
+            data.get("postal_code"),
+            data.get("country"),
+            data.get("insurance_provider"),
+            data.get("insurance_policy_number"),
+            height,
+            weight,
+            patient_user_id
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "Medical profile updated successfully!"})
+
+@patient_bp.route("/dashboard", methods=["GET"])
+def dashboard():
+    user = get_current_user_from_req()
+    if not user:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+
+    if user["role"] in ["doctor", "admin"] and request.args.get("patient_id"):
+        patient_id = int(request.args.get("patient_id"))
+    else:
+        patient_id = user["id"]
+    conn = get_db()
+
+    # Counts
+    appt_count = conn.execute("SELECT COUNT(*) FROM appointments WHERE patient_id = ?", (patient_id,)).fetchone()[0]
+    records_count = conn.execute("SELECT COUNT(*) FROM medical_records WHERE patient_id = ?", (patient_id,)).fetchone()[0]
+    rx_count = conn.execute("SELECT COUNT(*) FROM prescriptions WHERE patient_id = ?", (patient_id,)).fetchone()[0]
+    consult_count = conn.execute("SELECT COUNT(*) FROM consultations WHERE patient_id = ?", (patient_id,)).fetchone()[0]
+
+    # Upcoming Appointments
+    upcoming = conn.execute("""
+        SELECT a.*, u.name as doctor_name, d.specialty, d.clinic_name, d.clinic_city
+        FROM appointments a
+        JOIN users u ON a.doctor_id = u.id
+        LEFT JOIN doctors d ON u.id = d.user_id
+        WHERE a.patient_id = ? AND a.status IN ('scheduled', 'confirmed')
+        ORDER BY a.appointment_date ASC, a.time_slot ASC
+        LIMIT 5
+    """, (patient_id,)).fetchall()
+
+    # Recent Medical Records
+    records = conn.execute("""
+        SELECT * FROM medical_records
+        WHERE patient_id = ?
+        ORDER BY created_at DESC
+        LIMIT 4
+    """, (patient_id,)).fetchall()
+
+    # Recent Prescriptions
+    prescriptions = conn.execute("""
+        SELECT p.*, u.name as doctor_name, d.specialty
+        FROM prescriptions p
+        JOIN users u ON p.doctor_id = u.id
+        LEFT JOIN doctors d ON u.id = d.user_id
+        WHERE p.patient_id = ?
+        ORDER BY p.prescribed_date DESC
+        LIMIT 3
+    """, (patient_id,)).fetchall()
+
+    # Patient Vitals & Health Info
+    patient_info = conn.execute("SELECT * FROM patients WHERE user_id = ?", (patient_id,)).fetchone()
+    vitals = {}
+    if patient_info:
+        vitals = {
+            "blood_group": patient_info["blood_group"],
+            "height_cm": patient_info["height_cm"],
+            "weight_kg": patient_info["weight_kg"],
+            "allergies": json.loads(patient_info["allergies"] or "[]"),
+            "chronic_conditions": json.loads(patient_info["chronic_conditions"] or "[]")
+        }
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "stats": {
+            "appointments": appt_count,
+            "medical_records": records_count,
+            "prescriptions": rx_count,
+            "consultations": consult_count
+        },
+        "vitals": vitals,
+        "upcoming_appointments": [dict(row) for row in upcoming],
+        "recent_records": [dict(row) for row in records],
+        "recent_prescriptions": [
+            {
+                **dict(rx),
+                "medications": json.loads(rx["medications"] or "[]"),
+                "diagnostic_tests": json.loads(rx["diagnostic_tests"] or "[]")
+            }
+            for rx in prescriptions
+        ]
+    })
+
+@patient_bp.route("/history", methods=["GET"])
+def history():
+    user = get_current_user_from_req()
+    if not user:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+
+    if user["role"] in ["doctor", "admin"] and request.args.get("patient_id"):
+        patient_id = int(request.args.get("patient_id"))
+    else:
+        patient_id = user["id"]
+    conn = get_db()
+
+    # Consultations with doctor info
+    consultations = conn.execute("""
+        SELECT c.*, u.name as doctor_name, d.specialty, d.clinic_name
+        FROM consultations c
+        JOIN users u ON c.doctor_id = u.id
+        LEFT JOIN doctors d ON u.id = d.user_id
+        WHERE c.patient_id = ?
+        ORDER BY c.consultation_date DESC
+    """, (patient_id,)).fetchall()
+
+    parsed_consultations = []
+    for c in consultations:
+        item = dict(c)
+        item["symptoms"] = json.loads(c["symptoms"] or "[]")
+        rx = conn.execute("SELECT * FROM prescriptions WHERE consultation_id = ?", (c["id"],)).fetchone()
+        if rx:
+            rx_dict = dict(rx)
+            rx_dict["medications"] = json.loads(rx["medications"] or "[]")
+            rx_dict["diagnostic_tests"] = json.loads(rx["diagnostic_tests"] or "[]")
+            item["prescription"] = rx_dict
+        else:
+            item["prescription"] = None
+        parsed_consultations.append(item)
+
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "timeline": parsed_consultations
+    })

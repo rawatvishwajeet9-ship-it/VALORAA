@@ -201,7 +201,48 @@
         pillText.style.borderColor = '#ddd6fe';
         submitBtn.innerHTML = `Sign In as Admin <span style="font-size:1.1rem;margin-left:4px;">&rarr;</span>`;
       }
-    }
+    // URL parameter auto-select tab
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const roleParam = urlParams.get('role');
+      if (roleParam && ['patient', 'doctor', 'admin'].includes(roleParam.toLowerCase())) {
+        switchLoginPortal(roleParam.toLowerCase());
+      }
+
+      // Check if already logged in, redirect to corresponding dashboard
+      const curUser = getCurrentUser();
+      if (curUser && curUser.role) {
+        if (curUser.role === 'patient') window.location.href = '/patient/dashboard.html';
+        else if (curUser.role === 'doctor') window.location.href = '/doctor/dashboard.html';
+        else if (curUser.role === 'admin') window.location.href = '/admin/dashboard.html';
+      }
+    });
+
+    // Form submission handler
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const remember = document.getElementById('remember-me').checked;
+      const submitBtn = document.getElementById('btn-submit-login');
+
+      if (!email || !password) {
+        showToast('Please provide both email and password.', 'error');
+        return;
+      }
+
+      const origHtml = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `Signing in...`;
+
+      try {
+        await handleLogin(email, password, remember);
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origHtml;
+      }
+    });
   </script>
 </body>
 </html>

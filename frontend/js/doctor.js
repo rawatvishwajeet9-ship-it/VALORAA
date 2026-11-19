@@ -263,7 +263,7 @@ function filterPatientsRoster(query) {
     renderDoctorPatients(allPatientsCache);
     return;
   }
-  const filtered = allPatientsCache.filter(p => 
+  const filtered = allPatientsCache.filter(p =>
     (p.name || '').toLowerCase().includes(q) ||
     (p.email || '').toLowerCase().includes(q) ||
     (p.blood_group || '').toLowerCase().includes(q)
@@ -339,7 +339,7 @@ async function submitConsultation(e) {
     if (res.success) {
       closeModal('modal-consultation');
       showToast('Consultation notes saved & verified!', 'success');
-      
+
       const patientName = document.getElementById('consult-patient-name-display').textContent;
       if (confirm('Consultation recorded! Would you like to issue a Digital Prescription now?')) {
         openPrescriptionModal(patient_id, patientName, res.consultation_id, appointment_id);
@@ -473,7 +473,7 @@ async function loadDoctorProfile() {
     const p = res.profile;
     document.getElementById('doc-name').value = p.name || '';
     document.getElementById('doc-email').value = p.email || '';
-    
+
     const phoneInput = document.getElementById('doc-phone');
     if (phoneInput) {
       phoneInput.value = p.phone || '';

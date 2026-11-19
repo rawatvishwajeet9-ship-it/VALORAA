@@ -91,9 +91,9 @@ async function loadAdminDoctors() {
           </span>
         </td>
         <td>
-          ${d.is_verified 
-            ? `<span class="badge badge-success">Verified</span>` 
-            : `<span class="badge badge-warning">Pending Review</span>`}
+          ${d.is_verified
+        ? `<span class="badge badge-success">Verified</span>`
+        : `<span class="badge badge-warning">Pending Review</span>`}
         </td>
         <td>${getStatusBadge(d.user_status)}</td>
         <td>

@@ -61,15 +61,15 @@
       </span>
       <div class="user-meta-block">
         <div class="user-meta-name-row">
-          <span class="user-display-name current-user-name">aman</span>
+          <span class="user-display-name current-user-name">User</span>
           <span class="role-badge patient">
             <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             Patient
           </span>
         </div>
-        <div class="user-display-email current-user-email">aman@gmail.com</div>
+        <div class="user-display-email current-user-email">patient@valora.health</div>
       </div>
-      <div class="user-avatar-circle current-user-avatar">A</div>
+      <div class="user-avatar-circle current-user-avatar">U</div>
       <button class="btn-top-signout" onclick="handleLogout()" title="Sign Out">
         <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -170,9 +170,9 @@
           <div class="card-title" style="margin-bottom:18px;">1. Identity &amp; Profile Photo</div>
 
           <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid #f1f5f9;">
-            <div style="position:relative;">
-              <div class="current-user-avatar" style="width:72px;height:72px;border-radius:50%;background:#e6f7f5;color:#0d9488;border:2px solid #99f6e4;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;">
-                A
+            <div style="position:relative;cursor:pointer;" onclick="triggerAvatarUpload('patient-avatar-file')" title="Click to upload profile photo">
+              <div class="current-user-avatar" style="width:72px;height:72px;border-radius:50%;background:#e6f7f5;color:#0d9488;border:2px solid #99f6e4;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;overflow:hidden;">
+                U
               </div>
               <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;border-radius:50%;background:#0d9488;color:white;display:flex;align-items:center;justify-content:center;border:2px solid white;">
                 <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="white"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -180,8 +180,9 @@
             </div>
             <div>
               <div style="font-weight:700;font-size:0.95rem;color:#0f172a;">Profile Picture / Avatar</div>
-              <div style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">Upload a photo to show on your medical chart and top navigation bar. PNG, JPG or WEBP (Max 3MB).</div>
-              <button type="button" class="btn btn-outline btn-sm" onclick="showToast('Profile image updated.', 'success')">
+              <div style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">Upload a photo to show on your medical chart and top navigation bar. PNG, JPG or WEBP (Max 5MB).</div>
+              <input type="file" id="patient-avatar-file" style="display:none;" accept="image/png, image/jpeg, image/jpg, image/webp" onchange="handleNativeAvatarFile(this)">
+              <button type="button" class="btn btn-outline btn-sm" onclick="triggerAvatarUpload('patient-avatar-file')">
                 <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 Upload Custom Image
               </button>
@@ -201,7 +202,7 @@
               <label class="form-label" for="phone">PHONE NUMBER *</label>
               <div class="phone-input-combined">
                 <div class="phone-prefix">IN +91</div>
-                <input type="tel" id="phone" placeholder="10-digit number" required inputmode="numeric" maxlength="11" oninput="updatePatientPhoneBadge(this.value)">
+                <input type="tel" id="phone" placeholder="10-digit number" required inputmode="numeric" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11); updatePatientPhoneBadge(this.value);">
                 <div class="phone-digit-tag" id="patient-phone-badge">&check; 10d</div>
               </div>
             </div>

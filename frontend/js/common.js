@@ -2,7 +2,7 @@
  * VALORA Healthcare Management Platform - Common Layout & UI Helpers
  */
 
-// SVG Icon Definitions
+// SVG Icon Definitions (Strictly Zero Emojis)
 const ICONS = {
   eye: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`,
   eyeOff: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`,
@@ -18,7 +18,7 @@ const ICONS = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Populate user profile info in sidebars and topbars if available
+  // 1. Populate current user info in header and sidebar
   const user = getCurrentUser();
   if (user) {
     document.querySelectorAll('.current-user-name').forEach(el => {
@@ -30,27 +30,22 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.current-user-email').forEach(el => {
       el.textContent = user.email || '';
     });
-    document.querySelectorAll('.current-user-avatar').forEach(el => {
-      const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-      el.textContent = initials;
-    });
+    updateUserAvatarDisplay(user.avatar, user.name);
   }
 
-  // Highlight active link in sidebar
+  // 2. Highlight active nav link
   const currentPath = window.location.pathname;
-  document.querySelectorAll('.sidebar-nav .nav-item').forEach(link => {
+  document.querySelectorAll('.sidebar-nav a').forEach(link => {
     const href = link.getAttribute('href');
     if (href && (currentPath.endsWith(href) || currentPath.includes(href.replace('.html', '')))) {
       link.classList.add('active');
     }
   });
 
-  // Attach modal close events
+  // 3. Modal dismiss handlers
   document.querySelectorAll('.modal-overlay').forEach(modal => {
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.classList.remove('active');
-      }
+      if (e.target === modal) modal.classList.remove('active');
     });
   });
 
@@ -61,59 +56,260 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Attach auto phone validation to all tel inputs on page
+  // 4. Attach auto phone validation to all tel inputs on page
   document.querySelectorAll('input[type="tel"]').forEach(input => {
     bindPhoneInputValidation(input);
   });
 
-  // Attach auto DOB validation to all date inputs with dob id/name
-  document.querySelectorAll('input[type="date"][id*="dob"], input[type="date"][name*="dob"]').forEach(input => {
+  // 5. Attach auto DOB validation to all date inputs
+  document.querySelectorAll('input[type="date"][id*="dob"], input[type="date"][id*="birth"]').forEach(input => {
     bindDateOfBirthValidation(input);
+  });
+
+  // 6. Attach Height validation
+  document.querySelectorAll('input[id*="height"]').forEach(input => {
+    bindHeightInputValidation(input);
+  });
+
+  // 7. Attach Weight validation
+  document.querySelectorAll('input[id*="weight"]').forEach(input => {
+    bindWeightInputValidation(input);
   });
 });
 
-// Toggle Password Visibility with Eye Icon
-function togglePasswordVisibility(fieldId, btnEl) {
-  const input = document.getElementById(fieldId);
-  if (!input) return;
+/**
+ * Render Avatar Image or Initials dynamically in any container
+ */
+function updateUserAvatarDisplay(avatarUrl, userName) {
+  const user = getCurrentUser();
+  const name = userName || (user ? user.name : 'U');
+  const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'U';
 
-  if (input.type === 'password') {
-    input.type = 'text';
-    btnEl.innerHTML = ICONS.eyeOff;
-    btnEl.setAttribute('aria-label', 'Hide password');
-  } else {
-    input.type = 'password';
-    btnEl.innerHTML = ICONS.eye;
-    btnEl.setAttribute('aria-label', 'Show password');
-  }
+  document.querySelectorAll('.current-user-avatar').forEach(el => {
+    if (avatarUrl && (avatarUrl.startsWith('data:image') || avatarUrl.startsWith('http') || avatarUrl.startsWith('/'))) {
+      el.innerHTML = `<img src="${avatarUrl}" alt="${escapeHtml(name)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`;
+    } else {
+      el.textContent = initials;
+    }
+  });
 }
 
-// Phone Number Validation: strictly digits 0-9, between 9 and 11 digits
-function bindPhoneInputValidation(input) {
+/**
+ * Handle Native Image File Upload for both Patient and Doctor Profiles
+ */
+function handleNativeAvatarFile(input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+  if (!validTypes.includes(file.type)) {
+    showToast('Please select a valid image file (PNG, JPG, or WEBP).', 'error');
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Image size cannot exceed 5MB.', 'error');
+    return;
+  }
+
+  showToast('Uploading profile image...', 'info');
+
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const dataUrl = ev.target.result;
+    
+    // Update local UI immediately
+    updateUserAvatarDisplay(dataUrl);
+
+    try {
+      const res = await api.post('/auth/avatar', { avatar: dataUrl });
+      if (res.success) {
+        const user = getCurrentUser();
+        if (user) {
+          user.avatar = dataUrl;
+          setCurrentUser(user);
+        }
+        showToast('Profile photo updated successfully!', 'success');
+      } else {
+        showToast(res.message || 'Failed to update avatar.', 'error');
+      }
+    } catch (err) {
+      showToast(err.message || 'Network error updating avatar.', 'error');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+window.handleNativeAvatarFile = handleNativeAvatarFile;
+
+function triggerAvatarUpload(fileInputId) {
+  let fileInput = document.getElementById(fileInputId);
+  if (!fileInput) {
+    fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.id = fileInputId;
+    fileInput.accept = 'image/png, image/jpeg, image/jpg, image/webp';
+    fileInput.style.display = 'none';
+    fileInput.onchange = function() { handleNativeAvatarFile(this); };
+    document.body.appendChild(fileInput);
+  }
+  fileInput.click();
+}
+window.triggerAvatarUpload = triggerAvatarUpload;
+
+/**
+ * Native Document Vault Upload Handlers
+ */
+function updateSelectedFileName(input) {
+  const display = document.getElementById('selected-file-display') || (input.parentElement && input.parentElement.querySelector('#selected-file-display'));
+  if (!display) return;
+  if (input.files && input.files[0]) {
+    const f = input.files[0];
+    const sizeMb = (f.size / (1024 * 1024)).toFixed(2);
+    display.innerHTML = `<span style="color:#0d9488;font-weight:700;">Selected:</span> ${escapeHtml(f.name)} (${sizeMb} MB)`;
+  } else {
+    display.textContent = '';
+  }
+}
+window.updateSelectedFileName = updateSelectedFileName;
+
+async function handlePatientUploadRecord(e) {
+  if (e) e.preventDefault();
+  const fileInput = document.getElementById('rec-file-input');
+  const title = (document.getElementById('rec-title')?.value || '').trim();
+  const record_type = document.getElementById('rec-type')?.value || 'lab_report';
+  const facility = (document.getElementById('rec-facility')?.value || 'VALORA Health Diagnostics').trim();
+  const tags = (document.getElementById('rec-tags')?.value || '').trim();
+  const desc = (document.getElementById('rec-summary')?.value || '').trim();
+
+  if (!title) {
+    showToast('Please enter a record title.', 'error');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('title', title);
+  formData.append('record_type', record_type);
+  formData.append('facility_or_doctor', facility);
+  formData.append('tags', tags);
+  formData.append('description', desc);
+
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    formData.append('file', fileInput.files[0]);
+  }
+
+  try {
+    showToast('Securing document in encrypted vault...', 'info');
+    const res = await api.post('/records', formData);
+    if (res.success) {
+      showToast('Medical record stored securely in vault!', 'success');
+      closeModal('modal-upload-record');
+      
+      const form = document.getElementById('upload-record-form');
+      if (form) form.reset();
+      const display = document.getElementById('selected-file-display');
+      if (display) display.textContent = '';
+
+      if (typeof loadPatientRecords === 'function') {
+        loadPatientRecords();
+      }
+      if (typeof loadPatientDashboard === 'function') {
+        loadPatientDashboard();
+      }
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to upload document.', 'error');
+  }
+}
+window.handlePatientUploadRecord = handlePatientUploadRecord;
+
+async function handleDoctorUploadRecord(e) {
+  if (e) e.preventDefault();
+  const fileInput = document.getElementById('rec-file-input');
+  const patientId = document.getElementById('upload-target-patient-id')?.value;
+  const title = (document.getElementById('rec-title')?.value || '').trim();
+  const record_type = document.getElementById('rec-type')?.value || 'lab_report';
+  const facility = (document.getElementById('rec-facility')?.value || 'VALORA Care Center').trim();
+  const tags = (document.getElementById('rec-tags')?.value || '').trim();
+  const desc = (document.getElementById('rec-summary')?.value || '').trim();
+
+  if (!title) {
+    showToast('Please enter a record title.', 'error');
+    return;
+  }
+
+  const formData = new FormData();
+  if (patientId) formData.append('patient_id', patientId);
+  formData.append('title', title);
+  formData.append('record_type', record_type);
+  formData.append('facility_or_doctor', facility);
+  formData.append('tags', tags);
+  formData.append('description', desc);
+
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    formData.append('file', fileInput.files[0]);
+  }
+
+  try {
+    showToast('Uploading clinical document to patient vault...', 'info');
+    const res = await api.post('/records', formData);
+    if (res.success) {
+      showToast('Document uploaded successfully to patient vault!', 'success');
+      closeModal('modal-upload-record');
+      const form = document.getElementById('upload-record-form');
+      if (form) form.reset();
+      const display = document.getElementById('selected-file-display');
+      if (display) display.textContent = '';
+      if (typeof loadDoctorPatients === 'function') {
+        loadDoctorPatients();
+      }
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to upload document.', 'error');
+  }
+}
+window.handleDoctorUploadRecord = handleDoctorUploadRecord;
+
+/**
+ * Strictly Numeric Keystroke & Input Blocker for Phone Numbers
+ * Completely prevents any letter, word, or symbol from ever being typed or pasted.
+ */
+function bindPhoneInputValidation(input, badgeId) {
   if (!input) return;
   input.setAttribute('inputmode', 'numeric');
   input.setAttribute('pattern', '[0-9]{9,11}');
   input.setAttribute('maxlength', '11');
 
-  // Prevent typing any non-numeric character at keystroke level
+  // 1. Block non-numeric keystrokes at keydown
   input.addEventListener('keydown', (e) => {
-    // Allowed control & navigation keys
-    const allowedKeys = ['Backspace', 'Tab', 'Enter', 'Escape', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
-    if (allowedKeys.includes(e.key)) return;
-    // Allow Ctrl/Command shortcuts (A, C, V, X)
+    const allowedControls = ['Backspace', 'Tab', 'Enter', 'Escape', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+    if (allowedControls.includes(e.key)) return;
     if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
 
-    // Reject anything that is not 0-9
     if (!/^[0-9]$/.test(e.key)) {
       e.preventDefault();
+      e.stopPropagation();
     }
   });
 
-  input.addEventListener('input', () => {
-    // Strip everything except digits immediately
-    input.value = input.value.replace(/[^0-9]/g, '').slice(0, 11);
+  // 2. Block non-numeric characters before they reach the DOM
+  input.addEventListener('beforeinput', (e) => {
+    if (e.data && /[^0-9]/.test(e.data)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   });
 
+  // 3. Immediately strip any non-digit character on input
+  input.addEventListener('input', () => {
+    const original = input.value;
+    const cleaned = original.replace(/[^0-9]/g, '').slice(0, 11);
+    if (original !== cleaned) {
+      input.value = cleaned;
+    }
+    updatePhoneBadgeUI(input, badgeId);
+  });
+
+  // 4. Intercept paste to clean non-digits
   input.addEventListener('paste', (e) => {
     e.preventDefault();
     const pasteData = (e.clipboardData || window.clipboardData).getData('text') || '';
@@ -123,69 +319,153 @@ function bindPhoneInputValidation(input) {
     const currentVal = input.value;
     const nextVal = (currentVal.slice(0, start) + digitsOnly + currentVal.slice(end)).replace(/[^0-9]/g, '').slice(0, 11);
     input.value = nextVal;
+    updatePhoneBadgeUI(input, badgeId);
+  });
+
+  // 5. Blur validation check
+  input.addEventListener('blur', () => {
+    const val = input.value.trim();
+    if (!val && !input.required) return;
+    if (val.length < 9 || val.length > 11) {
+      input.style.borderColor = '#ef4444';
+    } else {
+      input.style.borderColor = '#10b981';
+    }
   });
 }
 
-function isValidPhone(phoneStr) {
-  if (!phoneStr) return true; // optional unless required
-  const digits = String(phoneStr).replace(/[^0-9]/g, '');
-  return digits.length >= 9 && digits.length <= 11;
+function updatePhoneBadgeUI(input, badgeId) {
+  const badge = badgeId ? document.getElementById(badgeId) : input.parentElement.querySelector('.phone-digit-tag');
+  if (!badge) return;
+  const digits = input.value.replace(/[^0-9]/g, '');
+  if (digits.length >= 9 && digits.length <= 11) {
+    badge.innerHTML = `<span style="color:#059669;font-weight:700;font-size:0.75rem;">&check; ${digits.length}d</span>`;
+    input.style.borderColor = '#10b981';
+  } else if (digits.length === 0) {
+    badge.innerHTML = `<span style="color:#94a3b8;font-size:0.75rem;">0/10d</span>`;
+    input.style.borderColor = '';
+  } else {
+    badge.innerHTML = `<span style="color:#dc2626;font-size:0.75rem;">${digits.length}/10d</span>`;
+    input.style.borderColor = '#ef4444';
+  }
 }
 
-// Date of Birth Validation: year cannot be more than 2022 or less than 1900
+/**
+ * Strict Keystroke Blocker for Height (30 cm - 250 cm)
+ */
+function bindHeightInputValidation(input) {
+  if (!input) return;
+  input.setAttribute('inputmode', 'decimal');
+  input.setAttribute('min', '30');
+  input.setAttribute('max', '250');
+
+  input.addEventListener('keydown', (e) => {
+    const allowed = ['Backspace', 'Tab', 'Enter', 'Escape', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+    if (allowed.includes(e.key)) return;
+    if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
+
+    if (e.key === '.' && !input.value.includes('.')) return;
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  input.addEventListener('input', () => {
+    input.value = input.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+  });
+
+  input.addEventListener('blur', () => {
+    if (!input.value) return;
+    const h = parseFloat(input.value);
+    if (isNaN(h) || h < 30 || h > 250) {
+      input.style.borderColor = '#ef4444';
+      showToast('Realistic human height must be between 30 cm and 250 cm.', 'error');
+    } else {
+      input.style.borderColor = '#10b981';
+    }
+  });
+}
+
+/**
+ * Strict Keystroke Blocker for Weight (2 kg - 300 kg)
+ */
+function bindWeightInputValidation(input) {
+  if (!input) return;
+  input.setAttribute('inputmode', 'decimal');
+  input.setAttribute('min', '2');
+  input.setAttribute('max', '300');
+
+  input.addEventListener('keydown', (e) => {
+    const allowed = ['Backspace', 'Tab', 'Enter', 'Escape', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+    if (allowed.includes(e.key)) return;
+    if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(e.key.toLowerCase())) return;
+
+    if (e.key === '.' && !input.value.includes('.')) return;
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  input.addEventListener('input', () => {
+    input.value = input.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+  });
+
+  input.addEventListener('blur', () => {
+    if (!input.value) return;
+    const w = parseFloat(input.value);
+    if (isNaN(w) || w < 2 || w > 300) {
+      input.style.borderColor = '#ef4444';
+      showToast('Realistic human weight must be between 2 kg and 300 kg.', 'error');
+    } else {
+      input.style.borderColor = '#10b981';
+    }
+  });
+}
+
+/**
+ * Date of Birth Validation (1900-01-01 to 2022-12-31, No Future Dates)
+ */
 function bindDateOfBirthValidation(input) {
   if (!input) return;
   input.setAttribute('max', '2022-12-31');
   input.setAttribute('min', '1900-01-01');
 
-  input.addEventListener('change', () => {
-    validateDateOfBirth(input);
-  });
-}
-
-function validateDateOfBirth(input) {
-  if (!input || !input.value) return true;
-  const val = input.value;
-  const parts = val.split('-');
-  if (parts.length === 3) {
-    const year = parseInt(parts[0], 10);
-    if (year > 2022 || year < 1900) {
-      input.setCustomValidity('Year of birth must be between 1900 and 2022.');
-      input.classList.add('is-invalid');
-      return false;
+  const check = () => {
+    if (!input.value) return true;
+    const parts = input.value.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      if (year > 2022 || year < 1900) {
+        input.setCustomValidity('Year of birth must be between 1900 and 2022.');
+        input.style.borderColor = '#ef4444';
+        showToast('Year of birth must be between 1900 and 2022 (future dates not allowed).', 'error');
+        return false;
+      }
     }
-  }
-  input.setCustomValidity('');
-  input.classList.remove('is-invalid');
-  return true;
+    input.setCustomValidity('');
+    input.style.borderColor = '#10b981';
+    return true;
+  };
+
+  input.addEventListener('change', check);
+  input.addEventListener('blur', check);
 }
 
-// Height & Weight Validation
-function isValidHeight(h) {
-  if (h === null || h === undefined || h === '') return true;
-  const val = parseFloat(h);
-  return !isNaN(val) && val >= 30 && val <= 280;
-}
-
-function isValidWeight(w) {
-  if (w === null || w === undefined || w === '') return true;
-  const val = parseFloat(w);
-  return !isNaN(val) && val >= 2 && val <= 400;
+function isValidPhone(phoneStr) {
+  if (!phoneStr) return true;
+  const digits = String(phoneStr).replace(/[^0-9]/g, '');
+  return digits.length >= 9 && digits.length <= 11;
 }
 
 // Modal Helpers
 function openModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.classList.add('active');
-  }
+  if (modal) modal.classList.add('active');
 }
 
 function closeModal(modalId) {
   const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.classList.remove('active');
-  }
+  if (modal) modal.classList.remove('active');
 }
 
 // Formatters

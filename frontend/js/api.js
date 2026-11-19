@@ -40,6 +40,8 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+window.escapeHtml = escapeHtml;
+window.escapeHTML = escapeHtml;
 
 // Get stored logged-in user
 function getCurrentUser() {
@@ -128,21 +130,21 @@ const api = {
   post: (endpoint, body = {}) => {
     return apiRequest(endpoint, {
       method: 'POST',
-      body: JSON.stringify(body)
+      body: (typeof FormData !== 'undefined' && body instanceof FormData) ? body : JSON.stringify(body)
     });
   },
 
   put: (endpoint, body = {}) => {
     return apiRequest(endpoint, {
       method: 'PUT',
-      body: JSON.stringify(body)
+      body: (typeof FormData !== 'undefined' && body instanceof FormData) ? body : JSON.stringify(body)
     });
   },
 
   patch: (endpoint, body = {}) => {
     return apiRequest(endpoint, {
       method: 'PATCH',
-      body: JSON.stringify(body)
+      body: (typeof FormData !== 'undefined' && body instanceof FormData) ? body : JSON.stringify(body)
     });
   },
 

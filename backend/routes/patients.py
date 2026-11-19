@@ -62,25 +62,27 @@ def profile():
                 conn.close()
                 return jsonify({"success": False, "message": "Emergency phone must be between 9 and 11 digits."}), 400
 
-        # Validate DOB
+        # Validate DOB (reject future dates or years outside 1900-2022)
         dob = data.get("date_of_birth")
         if dob:
             try:
-                yr = int(str(dob).split("-")[0])
-                if yr > 2022 or yr < 1900:
-                    conn.close()
-                    return jsonify({"success": False, "message": "Year of birth must be between 1900 and 2022."}), 400
+                parts = str(dob).replace("/", "-").split("-")
+                if len(parts) == 3:
+                    yr = int(parts[0]) if len(parts[0]) == 4 else int(parts[2])
+                    if yr > 2022 or yr < 1900:
+                        conn.close()
+                        return jsonify({"success": False, "message": "Year of birth must be between 1900 and 2022. Future dates not allowed."}), 400
             except (ValueError, IndexError):
                 pass
 
-        # Validate Height (30 to 280 cm)
+        # Validate Height (30 to 250 cm)
         height = data.get("height_cm")
         if height not in [None, "", "null"]:
             try:
                 h_val = float(height)
-                if h_val < 30 or h_val > 280:
+                if h_val < 30 or h_val > 250:
                     conn.close()
-                    return jsonify({"success": False, "message": "Height must be between 30 cm and 280 cm."}), 400
+                    return jsonify({"success": False, "message": "Height must be between 30 cm and 250 cm."}), 400
                 height = h_val
             except (ValueError, TypeError):
                 conn.close()
@@ -88,14 +90,14 @@ def profile():
         else:
             height = None
 
-        # Validate Weight (2 to 400 kg)
+        # Validate Weight (2 to 300 kg)
         weight = data.get("weight_kg")
         if weight not in [None, "", "null"]:
             try:
                 w_val = float(weight)
-                if w_val < 2 or w_val > 400:
+                if w_val < 2 or w_val > 300:
                     conn.close()
-                    return jsonify({"success": False, "message": "Weight must be between 2 kg and 400 kg."}), 400
+                    return jsonify({"success": False, "message": "Weight must be between 2 kg and 300 kg."}), 400
                 weight = w_val
             except (ValueError, TypeError):
                 conn.close()
@@ -103,16 +105,18 @@ def profile():
         else:
             weight = None
 
-        # Update users table (name, phone)
+        # Update users table (name, phone, avatar)
         name = (data.get("name") or "").strip()
-        if name or phone:
+        avatar = data.get("avatar")
+        if name or phone or avatar:
             conn.execute("""
                 UPDATE users SET 
                     name = COALESCE(NULLIF(?, ''), name),
                     phone = COALESCE(?, phone),
+                    avatar = COALESCE(?, avatar),
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, (name, phone, patient_user_id))
+            """, (name, phone, avatar, patient_user_id))
 
         # Update patients table
         allergies = json.dumps(data["allergies"]) if "allergies" in data else None
@@ -216,10 +220,19 @@ def dashboard():
 
     # Patient Vitals & Health Info
     patient_info = conn.execute("SELECT * FROM patients WHERE user_id = ?", (patient_id,)).fetchone()
+    latest_consult = conn.execute("""
+        SELECT blood_pressure, heart_rate, temperature FROM consultations
+        WHERE patient_id = ? AND blood_pressure IS NOT NULL AND blood_pressure != ''
+        ORDER BY consultation_date DESC LIMIT 1
+    """, (patient_id,)).fetchone()
+
+    blood_pressure = latest_consult["blood_pressure"] if latest_consult and latest_consult["blood_pressure"] else "120/80"
+
     vitals = {}
     if patient_info:
         vitals = {
             "blood_group": patient_info["blood_group"],
+            "blood_pressure": blood_pressure,
             "height_cm": patient_info["height_cm"],
             "weight_kg": patient_info["weight_kg"],
             "allergies": json.loads(patient_info["allergies"] or "[]"),

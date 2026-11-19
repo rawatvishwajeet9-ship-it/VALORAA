@@ -19,8 +19,10 @@ async function loadDoctorDashboard() {
     if (statConsults) statConsults.textContent = stats.total_consultations || 0;
     if (statFee) statFee.textContent = formatCurrency(stats.consultation_fee || 500);
 
+    const user = getCurrentUser();
     const docNameHeader = document.getElementById('doc-display-name');
-    if (docNameHeader && stats.name) docNameHeader.textContent = stats.name;
+    const doctorName = (res.doctor && res.doctor.name) || stats.name || (user ? user.name : 'Doctor');
+    if (docNameHeader) docNameHeader.textContent = doctorName;
 
     const docMetaLine = document.getElementById('doc-display-meta');
     if (docMetaLine) {
@@ -54,7 +56,12 @@ async function loadDoctorDashboard() {
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
               ${getStatusBadge(a.status)}
-              ${a.status !== 'completed' && a.status !== 'cancelled' ? `
+              ${a.status === 'scheduled' ? `
+                <button class="btn btn-sm" style="background:#0d9488;color:#ffffff;font-weight:700;border:none;padding:6px 14px;border-radius:8px;" onclick="updateDoctorApptStatus(${a.id}, 'confirmed')">
+                  Confirm Booking
+                </button>
+              ` : ''}
+              ${a.status === 'confirmed' ? `
                 <button class="btn btn-primary btn-sm" onclick="openConsultationModal(${a.id}, ${a.patient_id}, '${escapeHtml(a.patient_name)}', '${escapeHtml(a.time_slot || '')}')">
                   Start Consultation
                 </button>
@@ -113,15 +120,15 @@ async function loadDoctorAppointments() {
 
           <div style="display:flex;align-items:center;gap:8px;">
             ${a.status === 'scheduled' ? `
-              <button class="btn btn-sm" style="background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;" onclick="updateDoctorApptStatus(${a.id}, 'confirmed')">
-                <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg> Confirm
+              <button class="btn btn-sm" style="background:#0d9488;color:#ffffff;font-weight:700;border:none;padding:7px 14px;border-radius:8px;" onclick="updateDoctorApptStatus(${a.id}, 'confirmed')">
+                <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="white"><polyline points="20 6 9 17 4 12"/></svg> Confirm Appointment
               </button>
-              <button class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;" onclick="updateDoctorApptStatus(${a.id}, 'cancelled')">
+              <button class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:7px 12px;border-radius:8px;" onclick="updateDoctorApptStatus(${a.id}, 'cancelled')">
                 &times; Decline
               </button>
             ` : ''}
 
-            ${a.status !== 'completed' && a.status !== 'cancelled' ? `
+            ${a.status === 'confirmed' ? `
               <button class="btn btn-primary btn-sm" onclick="openConsultationModal(${a.id}, ${a.patient_id}, '${escapeHtml(a.patient_name)}', '${escapeHtml(a.time_slot)}')">
                 <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="white"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 Start Consultation

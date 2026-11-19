@@ -115,6 +115,23 @@
       </div>
 
       <div class="card" style="box-shadow:var(--shadow-sm);border:1px solid #e2e8f0;border-radius:var(--radius-lg);padding:24px;">
+
+        <!-- DSA Instant Search & Filter Bar -->
+        <div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:240px;">
+            <input type="text" id="appt-search-query" class="form-control" placeholder="Search appointments by patient, doctor, specialty, or reason..." style="height:42px;">
+          </div>
+          <div style="width:180px;">
+            <select id="appt-filter-status" class="form-control" style="height:42px;" onchange="filterAdminAppointments()">
+              <option value="">All Statuses</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+
         <div style="overflow-x:auto;">
           <table class="data-table" style="width:100%;font-size:0.88rem;">
             <thead>
@@ -140,6 +157,7 @@
   <script src="/js/api.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/common.js"></script>
+  <script src="/js/dsa.js"></script>
   <script src="/js/admin.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {

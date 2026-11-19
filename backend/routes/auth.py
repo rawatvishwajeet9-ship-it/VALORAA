@@ -250,6 +250,36 @@ def me():
         }
     })
 
+@auth_bp.route("/avatar", methods=["POST"])
+def update_avatar():
+    user = get_current_user_from_req()
+    if not user:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+
+    data = request.get_json() or {}
+    avatar = data.get("avatar") or ""
+    if not avatar:
+        return jsonify({"success": False, "message": "No image data provided."}), 400
+
+    # Limit base64 data to ~7MB
+    if len(avatar) > 7 * 1024 * 1024:
+        return jsonify({"success": False, "message": "Image size exceeds maximum limit of 4MB."}), 400
+
+    conn = get_db()
+    conn.execute("UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (avatar, user["id"]))
+    conn.execute(
+        "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)",
+        (user["id"], "UPDATE_AVATAR", "User", str(user["id"]), json.dumps({"role": user["role"]}))
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "success": True,
+        "avatar": avatar,
+        "message": "Profile picture updated successfully."
+    })
+
 @auth_bp.route("/logout", methods=["POST"])
 def logout():
     session.clear()

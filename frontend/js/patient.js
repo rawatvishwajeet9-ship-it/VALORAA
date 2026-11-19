@@ -33,7 +33,7 @@ async function loadPatientDashboard() {
 
     const healthIdEl = document.getElementById('dash-health-id');
     if (healthIdEl) {
-      healthIdEl.textContent = `VAL-PAT-${String(user?.id || 1).padStart(2, '0')}AE9`;
+      healthIdEl.textContent = `PAT-${String(user?.id || 1).padStart(5, '0')}`;
     }
 
     const bloodGroupEl = document.getElementById('dash-blood-group');
@@ -222,7 +222,29 @@ async function cancelAppointment(apptId) {
 }
 
 // Load Doctors Directory
+// Load Doctors Directory with DSA Indexing
 let doctorsCache = [];
+let doctorIndex = null;
+let doctorTrie = null;
+
+function buildDoctorsDSAIndex(doctors) {
+  if (typeof InvertedIndex !== 'undefined') {
+    doctorIndex = new InvertedIndex();
+    doctorTrie = new Trie();
+    doctors.forEach(d => {
+      doctorIndex.addRecord(d.id, [
+        d.name,
+        d.specialty,
+        d.clinic_city,
+        d.clinic_name,
+        (d.qualifications || []).join(' '),
+        d.biography || ''
+      ], d);
+      doctorTrie.insert(d.name, d.id);
+      doctorTrie.insert(d.specialty, d.id);
+    });
+  }
+}
 
 async function loadDoctorsDirectory() {
   const container = document.getElementById('doctors-directory-grid');
@@ -233,7 +255,15 @@ async function loadDoctorsDirectory() {
     if (!res.success) return;
 
     doctorsCache = res.doctors || [];
+    buildDoctorsDSAIndex(doctorsCache);
     renderDoctorsDirectory(doctorsCache);
+
+    const searchInput = document.getElementById('doc-search-query');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        filterDoctorsList();
+      });
+    }
 
   } catch (error) {
     showToast(error.message, 'error');
@@ -250,8 +280,11 @@ function renderDoctorsDirectory(doctors) {
   }
 
   container.innerHTML = doctors.map(d => {
-    const initial = (d.name || 'D')[0].toLowerCase();
+    const initial = (d.name || 'D')[0].toUpperCase();
     const quals = (d.qualifications || []).join(', ') || 'MBBS';
+    const avatarHtml = (d.avatar && (d.avatar.startsWith('data:image') || d.avatar.startsWith('http') || d.avatar.startsWith('/')))
+      ? `<img src="${d.avatar}" alt="${escapeHtml(d.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`
+      : `<span style="font-weight:800;font-size:1.15rem;color:#0d9488;">${initial}</span>`;
 
     return `
       <div class="card" style="margin-bottom:0;display:flex;flex-direction:column;justify-content:space-between;border-radius:14px;padding:22px;">
@@ -259,8 +292,8 @@ function renderDoctorsDirectory(doctors) {
           <!-- Top Row: Avatar + Name + Practitioner Badge -->
           <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
             <div style="display:flex;align-items:center;gap:12px;">
-              <div style="width:44px;height:44px;border-radius:12px;background:#e6f7f5;color:#0d9488;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.15rem;">
-                ${initial}
+              <div style="width:48px;height:48px;border-radius:12px;background:#e6f7f5;color:#0d9488;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:1px solid #99f6e4;">
+                ${avatarHtml}
               </div>
               <div>
                 <div style="font-weight:800;font-size:1.05rem;color:#0f172a;">${escapeHtml(d.name)}</div>
@@ -310,25 +343,104 @@ function renderDoctorsDirectory(doctors) {
 }
 
 function filterDoctorsList() {
-  const q = document.getElementById('doc-search-query')?.value.toLowerCase().trim() || '';
-  const spec = document.getElementById('doc-filter-specialty')?.value.toLowerCase().trim() || '';
+  const q = document.getElementById('doc-search-query')?.value.trim() || '';
+  const spec = document.getElementById('doc-filter-specialty')?.value.trim() || '';
 
-  const filtered = doctorsCache.filter(d => {
-    const matchQ = !q || (d.name || '').toLowerCase().includes(q) || (d.clinic_city || '').toLowerCase().includes(q) || (d.clinic_name || '').toLowerCase().includes(q);
-    const matchSpec = !spec || (d.specialty || '').toLowerCase() === spec;
-    return matchQ && matchSpec;
-  });
+  let candidates = doctorsCache;
+  if (q && doctorIndex) {
+    candidates = doctorIndex.search(q, false);
+  } else if (q) {
+    const qLower = q.toLowerCase();
+    candidates = doctorsCache.filter(d =>
+      (d.name || '').toLowerCase().includes(qLower) ||
+      (d.clinic_city || '').toLowerCase().includes(qLower) ||
+      (d.clinic_name || '').toLowerCase().includes(qLower)
+    );
+  }
 
-  renderDoctorsDirectory(filtered);
+  if (spec) {
+    candidates = candidates.filter(d => (d.specialty || '').toLowerCase() === spec.toLowerCase());
+  }
+
+  renderDoctorsDirectory(candidates);
 }
 
 // Open Booking Modal
-function openBookingModal(docUserId, docName, specialty, fee) {
-  document.getElementById('book-doc-id').value = docUserId;
-  document.getElementById('book-doc-name').textContent = docName;
-  document.getElementById('book-doc-sub').textContent = `${specialty} • Fee: ${formatCurrency(fee)}`;
+async function openBookingModal(docUserId, docName, specialty, fee) {
+  const docIdInput = document.getElementById('book-doc-id');
+  const docNameEl = document.getElementById('book-doc-name');
+  const docSubEl = document.getElementById('book-doc-sub');
+
+  if (docIdInput) docIdInput.value = docUserId;
+  if (docNameEl) docNameEl.textContent = docName;
+  if (docSubEl) docSubEl.textContent = `${specialty} • Fee: ${formatCurrency(fee)}`;
+
+  const dateInput = document.getElementById('book-date');
+  if (dateInput) {
+    const today = new Date().toISOString().split('T')[0];
+    if (!dateInput.value) dateInput.value = today;
+    dateInput.min = today;
+  }
+
   openModal('modal-book-appointment');
+  await refreshBookedSlots();
 }
+
+async function refreshBookedSlots() {
+  const docId = document.getElementById('book-doc-id')?.value;
+  const dateVal = document.getElementById('book-date')?.value;
+  if (!docId || !dateVal) return;
+
+  try {
+    const res = await api.get('/appointments/booked-slots', { doctor_id: docId, date: dateVal });
+    const booked = res.booked_slots || [];
+
+    const pills = document.querySelectorAll('#modal-book-appointment .time-slot-pill');
+    pills.forEach(pill => {
+      const slot = pill.getAttribute('data-slot') || pill.textContent.trim();
+      if (booked.includes(slot)) {
+        pill.classList.add('booked');
+        pill.classList.remove('active');
+        pill.setAttribute('title', 'Slot is already booked and confirmed');
+        pill.style.background = '#e2e8f0';
+        pill.style.color = '#94a3b8';
+        pill.style.cursor = 'not-allowed';
+        pill.style.pointerEvents = 'none';
+        pill.style.textDecoration = 'line-through';
+        pill.style.opacity = '0.5';
+      } else {
+        pill.classList.remove('booked');
+        pill.removeAttribute('title');
+        pill.style.background = '';
+        pill.style.color = '';
+        pill.style.cursor = 'pointer';
+        pill.style.pointerEvents = 'auto';
+        pill.style.textDecoration = 'none';
+        pill.style.opacity = '1';
+      }
+    });
+
+    const hiddenSlot = document.getElementById('book-time-slot');
+    if (hiddenSlot && booked.includes(hiddenSlot.value)) {
+      hiddenSlot.value = '';
+    }
+  } catch (err) {
+    console.error('Error fetching booked slots:', err);
+  }
+}
+window.refreshBookedSlots = refreshBookedSlots;
+
+function selectTimeSlot(el, slot) {
+  if (el.classList.contains('booked')) {
+    showToast('This time slot is already booked. Please choose another slot.', 'error');
+    return;
+  }
+  document.querySelectorAll('#modal-book-appointment .time-slot-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  const hidden = document.getElementById('book-time-slot');
+  if (hidden) hidden.value = slot;
+}
+window.selectTimeSlot = selectTimeSlot;
 
 // Handle Book Appointment Form Submission
 async function handleBookAppointment(e) {
@@ -605,9 +717,9 @@ async function loadPatientPrescriptions() {
                 Rx
               </div>
               <div>
-                <h4 style="font-size:1.05rem;font-weight:700;color:var(--text-main);margin:0;">Dr. ${escapeHTML(rx.doctor_name || 'Physician')}</h4>
+                <h4 style="font-size:1.05rem;font-weight:700;color:var(--text-main);margin:0;">Dr. ${escapeHtml(rx.doctor_name || 'Physician')}</h4>
                 <div style="font-size:0.8rem;color:var(--text-muted);">
-                  ${escapeHTML(rx.doctor_specialty || 'General Practitioner')} • Lic #${escapeHTML(rx.license_number || 'N/A')}
+                  ${escapeHtml(rx.doctor_specialty || 'General Practitioner')} • Lic #${escapeHtml(rx.license_number || 'N/A')}
                 </div>
               </div>
             </div>
@@ -636,11 +748,11 @@ async function loadPatientPrescriptions() {
                 <tbody>
                   ${meds.map(m => `
                     <tr style="border-bottom:1px solid #f1f5f9;">
-                      <td style="padding:10px 12px;font-weight:600;color:var(--text-main);">${escapeHTML(m.name || m.drug_name || '')}</td>
-                      <td style="padding:10px 12px;color:#475569;">${escapeHTML(m.dosage || '-')}</td>
-                      <td style="padding:10px 12px;color:#475569;">${escapeHTML(m.frequency || '-')}</td>
-                      <td style="padding:10px 12px;color:#475569;">${escapeHTML(m.duration || '-')}</td>
-                      <td style="padding:10px 12px;color:#64748b;font-size:0.82rem;">${escapeHTML(m.instructions || m.timing || 'After food')}</td>
+                      <td style="padding:10px 12px;font-weight:600;color:var(--text-main);">${escapeHtml(m.name || m.drug_name || '')}</td>
+                      <td style="padding:10px 12px;color:#475569;">${escapeHtml(m.dosage || '-')}</td>
+                      <td style="padding:10px 12px;color:#475569;">${escapeHtml(m.frequency || '-')}</td>
+                      <td style="padding:10px 12px;color:#475569;">${escapeHtml(m.duration || '-')}</td>
+                      <td style="padding:10px 12px;color:#64748b;font-size:0.82rem;">${escapeHtml(m.instructions || m.timing || 'After food')}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -653,7 +765,7 @@ async function loadPatientPrescriptions() {
                   Recommended Diagnostic Investigations
                 </h5>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                  ${tests.map(t => `<span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;padding:5px 10px;">${escapeHTML(typeof t === 'string' ? t : t.test_name)}</span>`).join('')}
+                  ${tests.map(t => `<span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;padding:5px 10px;">${escapeHtml(typeof t === 'string' ? t : t.test_name)}</span>`).join('')}
                 </div>
               </div>
             ` : ''}
@@ -661,7 +773,7 @@ async function loadPatientPrescriptions() {
             ${rx.general_advice ? `
               <div style="background:#f8fafc;padding:12px 16px;border-left:3px solid #0d9488;border-radius:6px;margin-top:14px;">
                 <strong style="font-size:0.85rem;color:var(--text-main);display:block;margin-bottom:4px;">Physician Clinical Advice:</strong>
-                <p style="margin:0;font-size:0.85rem;color:#475569;line-height:1.5;">${escapeHTML(rx.general_advice)}</p>
+                <p style="margin:0;font-size:0.85rem;color:#475569;line-height:1.5;">${escapeHtml(rx.general_advice)}</p>
               </div>
             ` : ''}
 
@@ -678,7 +790,7 @@ async function loadPatientPrescriptions() {
     }).join('');
 
   } catch (error) {
-    container.innerHTML = `<div class="empty-state"><h3>Error Loading Prescriptions</h3><p>${escapeHTML(error.message)}</p></div>`;
+    container.innerHTML = `<div class="empty-state"><h3>Error Loading Prescriptions</h3><p>${escapeHtml(error.message)}</p></div>`;
   }
 }
 
@@ -720,9 +832,9 @@ async function loadMedicalHistory() {
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;border-bottom:1px solid #f1f5f9;padding-bottom:12px;">
                   <div>
                     <span style="font-size:0.8rem;color:#0d9488;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Consultation Record</span>
-                    <h4 style="font-size:1.15rem;font-weight:700;color:var(--text-main);margin:4px 0;">Diagnosis: ${escapeHTML(item.diagnosis || 'General Checkup')}</h4>
+                    <h4 style="font-size:1.15rem;font-weight:700;color:var(--text-main);margin:4px 0;">Diagnosis: ${escapeHtml(item.diagnosis || 'General Checkup')}</h4>
                     <div style="font-size:0.85rem;color:var(--text-muted);">
-                      Attending Physician: <strong>Dr. ${escapeHTML(item.doctor_name || 'Practitioner')}</strong> (${escapeHTML(item.specialty || 'General')})
+                      Attending Physician: <strong>Dr. ${escapeHtml(item.doctor_name || 'Practitioner')}</strong> (${escapeHtml(item.specialty || 'General')})
                     </div>
                   </div>
                   <div style="text-align:right;">
@@ -735,7 +847,7 @@ async function loadMedicalHistory() {
                   <div style="margin-bottom:14px;">
                     <strong style="font-size:0.82rem;color:var(--text-muted);display:block;margin-bottom:6px;">Reported Symptoms:</strong>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                      ${symptoms.map(s => `<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;">${escapeHTML(s)}</span>`).join('')}
+                      ${symptoms.map(s => `<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;">${escapeHtml(s)}</span>`).join('')}
                     </div>
                   </div>
                 ` : ''}
@@ -744,7 +856,7 @@ async function loadMedicalHistory() {
                 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:12px;margin-bottom:16px;">
                   <div>
                     <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">Blood Pressure</span>
-                    <strong style="font-size:0.95rem;color:var(--text-main);">${escapeHTML(item.blood_pressure || 'N/A')}</strong>
+                    <strong style="font-size:0.95rem;color:var(--text-main);">${escapeHtml(item.blood_pressure || 'N/A')}</strong>
                   </div>
                   <div>
                     <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">Heart Rate</span>
@@ -764,7 +876,7 @@ async function loadMedicalHistory() {
                 ${item.notes ? `
                   <div style="margin-bottom:14px;">
                     <strong style="font-size:0.82rem;color:var(--text-muted);display:block;margin-bottom:4px;">Doctor's Clinical Notes:</strong>
-                    <p style="margin:0;font-size:0.88rem;color:#334155;line-height:1.5;">${escapeHTML(item.notes)}</p>
+                    <p style="margin:0;font-size:0.88rem;color:#334155;line-height:1.5;">${escapeHtml(item.notes)}</p>
                   </div>
                 ` : ''}
 
@@ -776,7 +888,7 @@ async function loadMedicalHistory() {
                       Attached Prescription (${rx.medications.length} items)
                     </div>
                     <ul style="margin:0;padding-left:18px;font-size:0.82rem;color:#065f46;">
-                      ${rx.medications.map(m => `<li><strong>${escapeHTML(m.name || m.drug_name)}</strong> – ${escapeHTML(m.dosage || '')} (${escapeHTML(m.frequency || '')})</li>`).join('')}
+                      ${rx.medications.map(m => `<li><strong>${escapeHtml(m.name || m.drug_name)}</strong> – ${escapeHtml(m.dosage || '')} (${escapeHtml(m.frequency || '')})</li>`).join('')}
                     </ul>
                   </div>
                 ` : ''}
@@ -788,6 +900,6 @@ async function loadMedicalHistory() {
     `;
 
   } catch (error) {
-    container.innerHTML = `<div class="empty-state"><h3>Error Loading Medical History</h3><p>${escapeHTML(error.message)}</p></div>`;
+    container.innerHTML = `<div class="empty-state"><h3>Error Loading Medical History</h3><p>${escapeHtml(error.message)}</p></div>`;
   }
 }

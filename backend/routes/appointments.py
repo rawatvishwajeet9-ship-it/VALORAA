@@ -94,7 +94,7 @@ def appointments():
         cursor.execute("""
             INSERT INTO appointments (
                 patient_id, doctor_id, appointment_date, time_slot, type, status, reason, fee
-            ) VALUES (?, ?, ?, ?, ?, 'confirmed', ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?)
         """, (patient_id, doctor_id, appointment_date, time_slot, appt_type, reason, fee))
         appt_id = cursor.lastrowid
 
@@ -172,3 +172,20 @@ def update_status(appointment_id):
     conn.close()
 
     return jsonify({"success": True, "message": f"Appointment status updated to '{new_status}'."})
+
+@appointments_bp.route("/booked-slots", methods=["GET"])
+def get_booked_slots():
+    doctor_id = request.args.get("doctor_id")
+    date_val = request.args.get("date")
+    if not doctor_id or not date_val:
+        return jsonify({"success": True, "booked_slots": []})
+    
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT time_slot FROM appointments
+        WHERE doctor_id = ? AND appointment_date = ? AND status NOT IN ('cancelled')
+    """, (doctor_id, date_val)).fetchall()
+    conn.close()
+    
+    slots = [r["time_slot"] for r in rows]
+    return jsonify({"success": True, "booked_slots": slots})

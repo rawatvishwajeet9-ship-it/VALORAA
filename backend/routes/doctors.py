@@ -142,7 +142,15 @@ def doctor_dashboard():
 
     return jsonify({
         "success": True,
+        "doctor": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user["email"],
+            "avatar": user["avatar"] or ""
+        },
         "stats": {
+            "name": user["name"],
+            "email": user["email"],
             "total_patients": total_patients,
             "today_appointments": today_count,
             "total_consultations": consult_count,
@@ -224,14 +232,16 @@ def doctor_profile():
                 return jsonify({"success": False, "message": "Invalid experience years."}), 400
 
         name = data.get("name")
-        if name or phone:
+        avatar = data.get("avatar")
+        if name or phone or avatar:
             conn.execute("""
                 UPDATE users SET 
                     name = COALESCE(?, name),
                     phone = COALESCE(?, phone),
+                    avatar = COALESCE(?, avatar),
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, (name, phone, doc_user_id))
+            """, (name, phone, avatar, doc_user_id))
 
         quals = json.dumps(data["qualifications"]) if "qualifications" in data else None
         days = json.dumps(data["available_days"]) if "available_days" in data else None

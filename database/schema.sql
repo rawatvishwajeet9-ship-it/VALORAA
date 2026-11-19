@@ -165,6 +165,19 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 10. Patient Reviews & Doctor Ratings Table
+CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    appointment_id INTEGER NOT NULL UNIQUE REFERENCES appointments(id) ON DELETE CASCADE,
+    patient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    doctor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+    comment TEXT DEFAULT '',
+    doctor_reply TEXT DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
@@ -176,3 +189,6 @@ CREATE INDEX IF NOT EXISTS idx_consultations_patient ON consultations(patient_id
 CREATE INDEX IF NOT EXISTS idx_consultations_doctor ON consultations(doctor_id);
 CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_doctor ON reviews(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_patient ON reviews(patient_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_appointment ON reviews(appointment_id);

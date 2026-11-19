@@ -22,11 +22,14 @@ def appointments():
             SELECT a.*, 
                    pat.name as patient_name, pat.email as patient_email, pat.phone as patient_phone,
                    doc.name as doctor_name, doc.email as doctor_email,
-                   d.specialty as doctor_specialty, d.clinic_name, d.clinic_city, d.clinic_street
+                   d.specialty as doctor_specialty, d.clinic_name, d.clinic_city, d.clinic_street,
+                   rev.id as review_id, rev.rating as review_rating, rev.comment as review_comment,
+                   rev.doctor_reply as review_doctor_reply, rev.created_at as review_created_at
             FROM appointments a
             JOIN users pat ON a.patient_id = pat.id
             JOIN users doc ON a.doctor_id = doc.id
             LEFT JOIN doctors d ON doc.id = d.user_id
+            LEFT JOIN reviews rev ON a.id = rev.appointment_id
             WHERE 1=1
         """
         params = []
@@ -48,9 +51,24 @@ def appointments():
         rows = conn.execute(sql, params).fetchall()
         conn.close()
 
+        appts = []
+        for r in rows:
+            item = dict(r)
+            if item.get("review_id"):
+                item["review"] = {
+                    "id": item["review_id"],
+                    "rating": item["review_rating"],
+                    "comment": item["review_comment"],
+                    "doctor_reply": item["review_doctor_reply"],
+                    "created_at": item["review_created_at"]
+                }
+            else:
+                item["review"] = None
+            appts.append(item)
+
         return jsonify({
             "success": True,
-            "appointments": [dict(r) for r in rows]
+            "appointments": appts
         })
 
     elif request.method == "POST":

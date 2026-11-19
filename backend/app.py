@@ -19,6 +19,7 @@ from backend.routes.records import records_bp
 from backend.routes.consultations import consultations_bp
 from backend.routes.prescriptions import prescriptions_bp
 from backend.routes.admin import admin_bp
+from backend.routes.reviews import reviews_bp
 
 def create_app():
     frontend_dir = PROJECT_ROOT / "frontend"
@@ -46,6 +47,7 @@ def create_app():
     app.register_blueprint(consultations_bp)
     app.register_blueprint(prescriptions_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(reviews_bp)
 
     # Serve uploaded medical files
     @app.route("/uploads/<path:filename>")

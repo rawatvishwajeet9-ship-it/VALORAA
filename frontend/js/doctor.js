@@ -602,3 +602,98 @@ function updatePhoneDigitBadge(val) {
     badge.innerHTML = `<span style="color:#dc2626;font-size:0.75rem;">${digits.length}/11d</span>`;
   }
 }
+
+// Load Doctor Reviews & Patient Ratings
+async function loadDoctorReviews() {
+  const container = document.getElementById('reviews-list-container');
+  if (!container) return;
+
+  try {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    const res = await api.get(`/doctors/${user.id}/reviews`);
+    if (!res.success) return;
+
+    const titleEl = document.getElementById('reviews-header-title');
+    const metaEl = document.getElementById('reviews-header-meta');
+    if (titleEl) {
+      titleEl.textContent = `Patient Reviews & Ratings (${res.total_reviews})`;
+    }
+    if (metaEl) {
+      metaEl.innerHTML = `Average Rating: <strong>${res.average_rating} / 5.0</strong> &bull; Verified patient consultations`;
+    }
+
+    if (!res.reviews || res.reviews.length === 0) {
+      container.innerHTML = `<div style="text-align:center;padding:36px;color:#94a3b8;font-size:0.9rem;">No patient reviews recorded yet. Reviews will automatically appear once patients complete consultations.</div>`;
+      return;
+    }
+
+    container.innerHTML = res.reviews.map(r => {
+      const stars = '&#9733;'.repeat(r.rating) + '&#9734;'.repeat(5 - r.rating);
+      return `
+        <div class="review-bubble-card" style="margin-bottom:14px;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-weight:800;font-size:0.95rem;color:#0f172a;">${escapeHtml(r.patient_name)}</span>
+              <span class="badge" style="background:#e6f7f5;color:#0d9488;font-weight:700;font-size:0.75rem;padding:3px 8px;border-radius:6px;">Verified Visit &bull; ${formatDate(r.appointment_date)}</span>
+            </div>
+            <div style="color:#f59e0b;font-size:1rem;letter-spacing:1px;">${stars}</div>
+          </div>
+          <div style="font-size:0.88rem;color:#475569;font-style:italic;line-height:1.5;">
+            &ldquo;${escapeHtml(r.comment || 'Patient completed consultation with high satisfaction.')}&rdquo;
+          </div>
+          ${r.doctor_reply ? `
+            <div class="official-reply-box" style="margin-top:10px;background:#f0fdf4;border-left:3px solid #10b981;padding:8px 12px;border-radius:4px;font-size:0.84rem;color:#166534;">
+              <div style="font-weight:700;margin-bottom:2px;">Your Official Reply:</div>
+              ${escapeHtml(r.doctor_reply)}
+            </div>
+          ` : `
+            <div style="margin-top:10px;" id="reply-box-${r.id}">
+              <button class="btn btn-outline btn-sm" onclick="showReplyComposer(${r.id})">
+                <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Reply to this review
+              </button>
+            </div>
+          `}
+        </div>
+      `;
+    }).join('');
+
+  } catch (error) {
+    console.error('Error loading doctor reviews:', error);
+  }
+}
+window.loadDoctorReviews = loadDoctorReviews;
+
+function showReplyComposer(reviewId) {
+  const box = document.getElementById(`reply-box-${reviewId}`);
+  if (!box) return;
+  box.innerHTML = `
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <input type="text" id="reply-input-${reviewId}" class="form-control" style="font-size:0.85rem;" placeholder="Write official physician reply...">
+      <button class="btn btn-primary btn-sm" onclick="submitReviewReply(${reviewId})">Send</button>
+      <button class="btn btn-outline btn-sm" onclick="loadDoctorReviews()">Cancel</button>
+    </div>
+  `;
+}
+window.showReplyComposer = showReplyComposer;
+
+async function submitReviewReply(reviewId) {
+  const input = document.getElementById(`reply-input-${reviewId}`);
+  const reply = input ? input.value.trim() : '';
+  if (!reply) {
+    showToast('Reply cannot be empty.', 'error');
+    return;
+  }
+  try {
+    const res = await api.post(`/reviews/${reviewId}/reply`, { reply });
+    if (res.success) {
+      showToast('Official reply posted successfully.', 'success');
+      loadDoctorReviews();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+window.submitReviewReply = submitReviewReply;

@@ -190,8 +190,25 @@ async function loadPatientAppointments(statusFilter = '') {
               <button class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;" onclick="cancelAppointment(${a.id})">
                 Cancel
               </button>
+            ` : a.status === 'completed' ? `
+              <div style="display:flex;align-items:center;gap:8px;">
+                ${a.review ? `
+                  <span style="font-size:0.8rem;font-weight:700;color:#b45309;background:#fef3c7;padding:5px 10px;border-radius:8px;border:1px solid #fde68a;display:inline-flex;align-items:center;gap:5px;">
+                    <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    Rated ${a.review.rating}/5
+                  </span>
+                  <button class="btn btn-sm" style="background:#f8fafc;color:#475569;border:1px solid #cbd5e1;padding:5px 9px;border-radius:6px;font-size:0.75rem;font-weight:600;" onclick="openReviewModal(${a.id}, ${a.doctor_id}, '${escapeHtml(a.doctor_name)}', ${a.review.rating}, '${escapeHtml(a.review.comment || '')}')">
+                    Edit Review
+                  </button>
+                ` : `
+                  <button class="btn btn-sm" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-weight:700;padding:6px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,0.04);" onclick="openReviewModal(${a.id}, ${a.doctor_id}, '${escapeHtml(a.doctor_name)}')">
+                    <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    Rate Doctor
+                  </button>
+                `}
+              </div>
             ` : `
-              <span style="font-size:0.82rem;color:#94a3b8;font-weight:600;">${a.status}</span>
+              <span style="font-size:0.82rem;color:#94a3b8;font-weight:600;">${escapeHtml(a.status)}</span>
             `}
           </div>
         </div>
@@ -220,6 +237,106 @@ async function cancelAppointment(apptId) {
     showToast(error.message, 'error');
   }
 }
+
+// Rate & Review Doctor Handlers (Patient only for completed appointments)
+function openReviewModal(appointmentId, doctorId, doctorName, currentRating = 5, currentComment = '') {
+  const modal = document.getElementById('modal-review-doctor');
+  if (!modal) return;
+
+  document.getElementById('review-appointment-id').value = appointmentId;
+  const subtitle = document.getElementById('review-modal-subtitle');
+  if (subtitle) {
+    subtitle.textContent = `Consultation with Dr. ${doctorName} (Completed)`;
+  }
+
+  setRatingStars(currentRating);
+  const commentInput = document.getElementById('review-comment-input');
+  if (commentInput) {
+    commentInput.value = currentComment || '';
+  }
+
+  modal.style.display = 'flex';
+}
+window.openReviewModal = openReviewModal;
+
+function closeReviewModal() {
+  const modal = document.getElementById('modal-review-doctor');
+  if (modal) modal.style.display = 'none';
+}
+window.closeReviewModal = closeReviewModal;
+
+const ratingLabels = {
+  1: '1.0 Star (Poor)',
+  2: '2.0 Stars (Fair)',
+  3: '3.0 Stars (Good)',
+  4: '4.0 Stars (Very Good)',
+  5: '5.0 Stars (Excellent)'
+};
+
+function setRatingStars(val) {
+  val = parseInt(val) || 5;
+  document.getElementById('review-rating-value').value = val;
+  const label = document.getElementById('rating-text-label');
+  if (label) {
+    label.textContent = ratingLabels[val] || `${val}.0 Stars`;
+  }
+
+  const buttons = document.querySelectorAll('#star-rating-container .star-rating-btn');
+  buttons.forEach(btn => {
+    const starVal = parseInt(btn.getAttribute('data-value'));
+    const svg = btn.querySelector('svg');
+    if (starVal <= val) {
+      svg.setAttribute('fill', '#f59e0b');
+      svg.setAttribute('stroke', '#d97706');
+    } else {
+      svg.setAttribute('fill', '#e2e8f0');
+      svg.setAttribute('stroke', '#cbd5e1');
+    }
+  });
+}
+window.setRatingStars = setRatingStars;
+
+async function handleReviewSubmit(e) {
+  e.preventDefault();
+  const appointmentId = document.getElementById('review-appointment-id').value;
+  const rating = document.getElementById('review-rating-value').value;
+  const comment = document.getElementById('review-comment-input').value.trim();
+
+  if (!appointmentId) {
+    showToast('Invalid appointment selected.', 'error');
+    return;
+  }
+
+  const submitBtn = document.getElementById('btn-submit-review');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+  }
+
+  try {
+    const res = await api.post('/reviews', {
+      appointment_id: parseInt(appointmentId),
+      rating: parseInt(rating),
+      comment: comment
+    });
+
+    if (res.success) {
+      showToast(res.message || 'Review submitted successfully!', 'success');
+      closeReviewModal();
+      if (document.getElementById('patient-appts-list')) {
+        loadPatientAppointments();
+      }
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to submit review.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Review';
+    }
+  }
+}
+window.handleReviewSubmit = handleReviewSubmit;
 
 // Load Doctors Directory
 // Load Doctors Directory with DSA Indexing
@@ -308,7 +425,7 @@ function renderDoctorsDirectory(doctors) {
 
           <!-- Rating & Experience -->
           <div style="font-size:0.8rem;color:#64748b;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-            <span style="color:#f59e0b;font-weight:700;">&#9733; ${d.rating || 4.8}</span>
+            <span style="color:#f59e0b;font-weight:700;">&#9733; ${d.rating || 4.8}${d.total_reviews ? ` (${d.total_reviews})` : ''}</span>
             &bull;
             <span>${d.experience_years || 2}+ yrs exp</span>
             &bull;

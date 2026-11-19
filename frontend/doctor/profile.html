@@ -355,74 +355,17 @@
               <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </div>
             <div>
-              <div class="card-title">Patient Reviews &amp; Ratings (3)</div>
-              <div style="font-size:0.8rem;color:#64748b;">Average Rating: <strong>4.7 / 5.0</strong> &bull; Verified patient consultations</div>
+              <div class="card-title" id="reviews-header-title">Patient Reviews &amp; Ratings</div>
+              <div style="font-size:0.8rem;color:#64748b;" id="reviews-header-meta">Verified patient consultations</div>
             </div>
           </div>
-          <button class="btn btn-sm" style="background:#e6f7f5;color:#0d9488;border:1px solid #99f6e4;">
-            Manage &amp; Reply to Reviews &rarr;
+          <button class="btn btn-sm" style="background:#e6f7f5;color:#0d9488;border:1px solid #99f6e4;" onclick="loadDoctorReviews()">
+            Refresh Reviews &rarr;
           </button>
         </div>
 
-        <!-- Review 1 -->
-        <div class="review-bubble-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-weight:800;font-size:0.95rem;color:#0f172a;">om</span>
-              <span class="badge" style="background:#e6f7f5;color:#0d9488;font-weight:700;">Verified Visit</span>
-            </div>
-            <div style="color:#f59e0b;font-size:0.9rem;">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-          </div>
-          <div style="font-size:0.88rem;color:#475569;font-style:italic;line-height:1.5;">
-            &ldquo;Extremely attentive and thorough doctor. Carefully reviewed all my past diagnostic reports, explained the diagnosis clearly, and provided an effective treatment plan with minimal medication.&rdquo;
-          </div>
-          <div class="official-reply-box">
-            <div style="font-weight:700;color:#0f766e;margin-bottom:3px;display:flex;align-items:center;gap:6px;">
-              <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
-              Your Official Reply:
-            </div>
-            Thank you for your warm feedback! Please continue with the morning walks and prescribed dosage. Feel free to reach out for a follow-up review anytime.
-          </div>
-        </div>
-
-        <!-- Review 2 -->
-        <div class="review-bubble-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-weight:800;font-size:0.95rem;color:#0f172a;">Ananya Sharma</span>
-              <span class="badge" style="background:#e6f7f5;color:#0d9488;font-weight:700;">Verified Visit</span>
-            </div>
-            <div style="color:#f59e0b;font-size:0.9rem;">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-          </div>
-          <div style="font-size:0.88rem;color:#475569;font-style:italic;line-height:1.5;">
-            &ldquo;Very patient and professional. Addressed all my concerns about screen fatigue and tension headaches. The prescribed dosage schedule brought immediate relief.&rdquo;
-          </div>
-          <div style="margin-top:10px;">
-            <button class="btn btn-outline btn-sm" onclick="showToast('Reply composer activated.', 'info')">
-              <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Reply to this review
-            </button>
-          </div>
-        </div>
-
-        <!-- Review 3 -->
-        <div class="review-bubble-card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-weight:800;font-size:0.95rem;color:#0f172a;">Kunal Deshmukh</span>
-              <span class="badge" style="background:#e6f7f5;color:#0d9488;font-weight:700;">Verified Visit</span>
-            </div>
-            <div style="color:#f59e0b;font-size:0.9rem;">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
-          </div>
-          <div style="font-size:0.88rem;color:#475569;font-style:italic;line-height:1.5;">
-            &ldquo;Great diagnostic accuracy and minimal wait time. The digital prescription and report vault features in VALORA made following up seamless.&rdquo;
-          </div>
-          <div style="margin-top:10px;">
-            <button class="btn btn-outline btn-sm" onclick="showToast('Reply composer activated.', 'info')">
-              <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Reply to this review
-            </button>
-          </div>
+        <div id="reviews-list-container">
+          <div style="text-align:center;padding:24px;color:#94a3b8;">Loading verified reviews...</div>
         </div>
 
       </div>
@@ -438,6 +381,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       checkAuth('doctor');
       loadDoctorProfile();
+      loadDoctorReviews();
 
       const phoneInput = document.getElementById('doc-phone');
       bindPhoneInputValidation(phoneInput);

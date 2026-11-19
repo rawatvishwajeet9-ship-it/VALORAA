@@ -347,6 +347,63 @@
 
       </form>
 
+      <!-- Section: Security & Password Management -->
+      <div class="card" id="security-password-section" style="margin-bottom:24px;">
+        <div class="card-header" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:#e0f2fe;color:#0284c7;display:flex;align-items:center;justify-content:center;">
+              <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div>
+              <div class="card-title">Security &amp; Change Password</div>
+              <div style="font-size:0.8rem;color:#64748b;">Update your physician portal password with CAPTCHA verification</div>
+            </div>
+          </div>
+        </div>
+
+        <form id="form-change-password" onsubmit="handleProfileChangePassword(event, 'doctor')">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="current_password" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">Current Password *</label>
+              <input type="password" id="current_password" class="form-control" placeholder="Enter your current password" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new_password" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">New Password *</label>
+              <input type="password" id="new_password" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="confirm_password" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">Confirm New Password *</label>
+              <input type="password" id="confirm_password" class="form-control" placeholder="Re-enter new password" minlength="6" required>
+            </div>
+          </div>
+
+          <!-- Captcha Box -->
+          <div style="display:flex;align-items:center;gap:16px;background:#f8fafc;padding:14px 18px;border-radius:10px;border:1px solid #e2e8f0;margin:12px 0 18px;flex-wrap:wrap;">
+            <div>
+              <label class="form-label" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;margin-bottom:6px;display:block;">Security CAPTCHA *</label>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div id="captcha-display" style="font-family:'Courier New', monospace;font-size:1.4rem;font-weight:900;letter-spacing:6px;background:#0f172a;color:#38bdf8;padding:8px 16px;border-radius:8px;user-select:none;text-decoration:line-through;font-style:italic;">
+                  7K9XP
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="refreshCaptcha()" title="Refresh CAPTCHA" style="padding:7px 10px;">
+                  <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                </button>
+              </div>
+            </div>
+            <div style="flex:1;min-width:200px;">
+              <label class="form-label" for="captcha_input" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;margin-bottom:6px;display:block;">Enter Code Shown *</label>
+              <input type="text" id="captcha_input" class="form-control" placeholder="Type captcha code" required style="font-weight:700;letter-spacing:2px;text-transform:uppercase;">
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;">
+            <button type="submit" class="btn btn-primary" id="btn-change-pw-submit" style="padding:10px 24px;">
+              Change Password
+            </button>
+          </div>
+        </form>
+      </div>
+
       <!-- Section 4: Patient Reviews & Ratings -->
       <div class="card" id="reviews-section">
         <div class="card-header">

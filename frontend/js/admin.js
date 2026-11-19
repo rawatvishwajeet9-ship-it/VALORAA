@@ -207,7 +207,10 @@ function renderAdminDoctorsTable(doctors) {
           <div style="display:flex;align-items:center;gap:10px;">
             ${avatarHtml}
             <div>
-              <div style="font-weight:700;color:#0f172a;">${escapeHtml(d.name)}</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-weight:700;color:#0f172a;">${escapeHtml(d.name)}</span>
+                <span class="badge" style="background:#f1f5f9;color:#475569;font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:4px;border:1px solid #e2e8f0;">ID: #${d.user_id}</span>
+              </div>
               <div style="font-size:0.8rem;color:#64748b;">${escapeHtml(d.email)} &bull; ${escapeHtml(d.phone ? ('+91 ' + d.phone) : 'No phone')}</div>
             </div>
           </div>
@@ -228,7 +231,7 @@ function renderAdminDoctorsTable(doctors) {
         </td>
         <td>${getStatusBadge(d.user_status)}</td>
         <td>
-          <div style="display:flex;gap:6px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
             ${!d.is_verified ? `
               <button class="btn btn-success btn-sm" onclick="verifyDoctorAction(${d.id}, 'approve')">Approve</button>
             ` : `
@@ -239,6 +242,9 @@ function renderAdminDoctorsTable(doctors) {
             ` : `
               <button class="btn btn-primary btn-sm" onclick="toggleUserStatus(${d.user_id}, 'active')">Activate</button>
             `}
+            <button class="btn btn-sm" style="background:#f0f9ff;color:#0284c7;border:1px solid #bae6fd;padding:5px 9px;border-radius:6px;font-weight:600;" onclick="openAdminPasswordModal(${d.user_id}, '${escapeHtml(d.name)}')">
+              Password
+            </button>
             <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:5px 9px;border-radius:6px;font-weight:600;" onclick="deleteUserAccount(${d.user_id}, '${escapeHtml(d.name)}')">
               Remove
             </button>
@@ -323,6 +329,93 @@ async function deleteUserAccount(userId, userName) {
 }
 window.deleteUserAccount = deleteUserAccount;
 
+// Admin Reset Password Modal
+function ensureAdminPasswordModal() {
+  if (document.getElementById('modal-admin-reset-pw')) return;
+  const modal = document.createElement('div');
+  modal.id = 'modal-admin-reset-pw';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  modal.innerHTML = `
+    <div style="background:#ffffff;border-radius:16px;max-width:440px;width:92%;padding:28px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);position:relative;">
+      <button type="button" onclick="closeAdminPasswordModal()" style="position:absolute;top:18px;right:18px;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:1.4rem;line-height:1;">&times;</button>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div style="width:40px;height:40px;border-radius:10px;background:#e0f2fe;color:#0284c7;display:flex;align-items:center;justify-content:center;">
+          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div>
+          <h3 style="font-size:1.1rem;font-weight:800;color:#0f172a;margin:0;">Reset User Password</h3>
+          <p style="font-size:0.8rem;color:#64748b;margin:2px 0 0;" id="admin-reset-pw-user-name">Account</p>
+        </div>
+      </div>
+      <form id="form-admin-reset-pw" onsubmit="handleAdminPasswordSubmit(event)">
+        <input type="hidden" id="admin-reset-pw-user-id" value="">
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">Enter New Password *</label>
+          <input type="text" id="admin-reset-pw-input" class="form-control" placeholder="Min. 6 characters" minlength="6" required style="font-size:0.9rem;">
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;">
+          <button type="button" class="btn btn-outline" onclick="closeAdminPasswordModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btn-admin-save-pw">Update Password</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function openAdminPasswordModal(userId, userName) {
+  ensureAdminPasswordModal();
+  document.getElementById('admin-reset-pw-user-id').value = userId;
+  document.getElementById('admin-reset-pw-user-name').textContent = `Setting new password for ${userName} (ID #${userId})`;
+  document.getElementById('admin-reset-pw-input').value = '';
+  document.getElementById('modal-admin-reset-pw').style.display = 'flex';
+  document.getElementById('admin-reset-pw-input').focus();
+}
+window.openAdminPasswordModal = openAdminPasswordModal;
+
+function closeAdminPasswordModal() {
+  const modal = document.getElementById('modal-admin-reset-pw');
+  if (modal) modal.style.display = 'none';
+}
+window.closeAdminPasswordModal = closeAdminPasswordModal;
+
+async function handleAdminPasswordSubmit(e) {
+  e.preventDefault();
+  const userId = document.getElementById('admin-reset-pw-user-id').value;
+  const newPassword = document.getElementById('admin-reset-pw-input').value.trim();
+
+  if (!userId || !newPassword) {
+    showToast('User ID and new password are required.', 'error');
+    return;
+  }
+  if (newPassword.length < 6) {
+    showToast('Password must be at least 6 characters.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-admin-save-pw');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+  }
+
+  try {
+    const res = await api.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword });
+    if (res.success) {
+      showToast(res.message, 'success');
+      closeAdminPasswordModal();
+    }
+  } catch (error) {
+    showToast(error.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Update Password';
+    }
+  }
+}
+window.handleAdminPasswordSubmit = handleAdminPasswordSubmit;
+
 // -------------------------------------------------------------
 // 3. Patient Governance with DSA Search
 // -------------------------------------------------------------
@@ -384,7 +477,10 @@ function renderAdminPatientsTable(patients) {
           <div style="display:flex;align-items:center;gap:10px;">
             ${avatarHtml}
             <div>
-              <div style="font-weight:700;color:#0f172a;">${escapeHtml(p.name)}</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-weight:700;color:#0f172a;">${escapeHtml(p.name)}</span>
+                <span class="badge" style="background:#f1f5f9;color:#475569;font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:4px;border:1px solid #e2e8f0;">ID: #${p.user_id}</span>
+              </div>
               <div style="font-size:0.8rem;color:#64748b;">${escapeHtml(p.email)} &bull; ${escapeHtml(p.phone ? ('+91 ' + p.phone) : 'No phone')}</div>
             </div>
           </div>
@@ -403,12 +499,15 @@ function renderAdminPatientsTable(patients) {
         </td>
         <td>${getStatusBadge(p.user_status)}</td>
         <td>
-          <div style="display:flex;gap:6px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
             ${p.user_status === 'active' ? `
               <button class="btn btn-danger btn-sm" onclick="toggleUserStatus(${p.user_id}, 'suspended')">Suspend</button>
             ` : `
               <button class="btn btn-primary btn-sm" onclick="toggleUserStatus(${p.user_id}, 'active')">Activate</button>
             `}
+            <button class="btn btn-sm" style="background:#f0f9ff;color:#0284c7;border:1px solid #bae6fd;padding:5px 9px;border-radius:6px;font-weight:600;" onclick="openAdminPasswordModal(${p.user_id}, '${escapeHtml(p.name)}')">
+              Password
+            </button>
             <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:5px 9px;border-radius:6px;font-weight:600;" onclick="deleteUserAccount(${p.user_id}, '${escapeHtml(p.name)}')">
               Remove
             </button>

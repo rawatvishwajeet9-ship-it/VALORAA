@@ -368,7 +368,7 @@ async function loadDoctorsDirectory() {
   if (!container) return;
 
   try {
-    const res = await api.get('/doctors');
+    const res = await api.get('/doctors', { _t: Date.now() });
     if (!res.success) return;
 
     doctorsCache = res.doctors || [];
@@ -820,9 +820,13 @@ async function loadPatientPrescriptions() {
           <!-- Rx Header -->
           <div style="background:#f8fafc;padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
             <div style="display:flex;align-items:center;gap:12px;">
-              <div style="width:40px;height:40px;border-radius:10px;background:#0d9488;color:#ffffff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;">
-                Rx
-              </div>
+              ${(rx.doctor_avatar && (rx.doctor_avatar.startsWith('data:image') || rx.doctor_avatar.startsWith('http') || rx.doctor_avatar.startsWith('/'))) ? `
+                <img src="${rx.doctor_avatar}" alt="Dr. ${escapeHtml(rx.doctor_name || 'Physician')}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid #99f6e4;flex-shrink:0;">
+              ` : `
+                <div style="width:40px;height:40px;border-radius:10px;background:#0d9488;color:#ffffff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;flex-shrink:0;">
+                  Rx
+                </div>
+              `}
               <div>
                 <h4 style="font-size:1.05rem;font-weight:700;color:var(--text-main);margin:0;">Dr. ${escapeHtml(rx.doctor_name || 'Physician')}</h4>
                 <div style="font-size:0.8rem;color:var(--text-muted);">

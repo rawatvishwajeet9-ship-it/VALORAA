@@ -49,6 +49,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // 4. Initialize CAPTCHA if display element is present
+  if (document.getElementById('captcha-display')) {
+    refreshCaptcha();
+  }
+
   document.querySelectorAll('[data-close-modal]').forEach(btn => {
     btn.addEventListener('click', () => {
       const modal = btn.closest('.modal-overlay');
@@ -532,3 +537,86 @@ function getStatusBadge(status) {
       return `<span class="badge badge-neutral">${status}</span>`;
   }
 }
+
+// -------------------------------------------------------------
+// Interactive Security CAPTCHA & Profile Password Management
+// -------------------------------------------------------------
+let currentCaptchaSecret = '';
+
+function generateCaptchaCode(len = 5) {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let res = '';
+  for (let i = 0; i < len; i++) {
+    res += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return res;
+}
+
+function refreshCaptcha() {
+  const display = document.getElementById('captcha-display');
+  if (!display) return;
+  currentCaptchaSecret = generateCaptchaCode(5);
+  display.textContent = currentCaptchaSecret;
+  const input = document.getElementById('captcha_input');
+  if (input) input.value = '';
+}
+window.refreshCaptcha = refreshCaptcha;
+
+async function handleProfileChangePassword(e) {
+  e.preventDefault();
+  const curPw = document.getElementById('current_password').value;
+  const newPw = document.getElementById('new_password').value.trim();
+  const confirmPw = document.getElementById('confirm_password').value.trim();
+  const captchaIn = (document.getElementById('captcha_input')?.value || '').trim().toUpperCase();
+
+  if (!curPw || !newPw || !confirmPw) {
+    showToast('Please fill all password fields.', 'error');
+    return;
+  }
+
+  if (newPw.length < 6) {
+    showToast('New password must be at least 6 characters.', 'error');
+    return;
+  }
+
+  if (newPw !== confirmPw) {
+    showToast('New password and confirmation do not match.', 'error');
+    return;
+  }
+
+  if (!captchaIn || captchaIn !== currentCaptchaSecret.toUpperCase()) {
+    showToast('Security CAPTCHA verification failed. Please enter the correct code.', 'error');
+    refreshCaptcha();
+    return;
+  }
+
+  const btn = document.getElementById('btn-change-pw-submit');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+  }
+
+  try {
+    const res = await api.post('/auth/change-password', {
+      current_password: curPw,
+      new_password: newPw,
+      captcha_code: captchaIn,
+      captcha_expected: currentCaptchaSecret
+    });
+
+    if (res.success) {
+      showToast(res.message || 'Password changed successfully!', 'success');
+      document.getElementById('form-change-password').reset();
+      refreshCaptcha();
+    }
+  } catch (error) {
+    showToast(error.message || 'Failed to update password.', 'error');
+    refreshCaptcha();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Change Password';
+    }
+  }
+}
+window.handleProfileChangePassword = handleProfileChangePassword;

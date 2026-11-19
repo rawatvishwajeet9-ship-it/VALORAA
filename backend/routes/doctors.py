@@ -48,7 +48,11 @@ def list_doctors():
         item["available_days"] = json.loads(row["available_days"] or "[]")
         result.append(item)
 
-    return jsonify({"success": True, "doctors": result})
+    resp = jsonify({"success": True, "doctors": result})
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 @doctor_bp.route("/doctors/<int:doctor_id>", methods=["GET"])
 def get_doctor_details(doctor_id):

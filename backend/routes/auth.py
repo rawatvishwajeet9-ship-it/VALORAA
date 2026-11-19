@@ -284,3 +284,39 @@ def update_avatar():
 def logout():
     session.clear()
     return jsonify({"success": True, "message": "Logged out successfully."})
+
+@auth_bp.route("/change-password", methods=["POST"])
+def change_password():
+    user = get_current_user_from_req()
+    if not user:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+
+    data = request.get_json() or {}
+    current_password = data.get("current_password", "")
+    new_password = (data.get("new_password") or "").strip()
+    captcha_code = (data.get("captcha_code") or "").strip()
+    captcha_expected = (data.get("captcha_expected") or "").strip()
+
+    if not current_password or not new_password:
+        return jsonify({"success": False, "message": "Current password and new password are required."}), 400
+
+    if len(new_password) < 6:
+        return jsonify({"success": False, "message": "New password must be at least 6 characters long."}), 400
+
+    if captcha_expected and captcha_code.lower() != captcha_expected.lower():
+        return jsonify({"success": False, "message": "Security CAPTCHA verification failed. Please try again."}), 400
+
+    if not check_password_hash(user["password_hash"], current_password):
+        return jsonify({"success": False, "message": "Current password is incorrect."}), 400
+
+    new_hash = generate_password_hash(new_password)
+    conn = get_db()
+    conn.execute("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (new_hash, user["id"]))
+    conn.execute(
+        "INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)",
+        (user["id"], "PASSWORD_CHANGED", "User", str(user["id"]), json.dumps({"role": user["role"]}))
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True, "message": "Your password has been changed successfully!"})

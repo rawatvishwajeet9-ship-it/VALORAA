@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from werkzeug.security import generate_password_hash
 from backend.database.connection import get_db
 from backend.routes.auth import get_current_user_from_req
 import json
@@ -170,6 +171,7 @@ def delete_user(user_id):
         return jsonify({"success": False, "message": "User not found."}), 404
 
     # Delete related clinical and account records
+    conn.execute("DELETE FROM reviews WHERE patient_id = ? OR doctor_id = ?", (user_id, user_id))
     conn.execute("DELETE FROM appointments WHERE patient_id = ? OR doctor_id = ?", (user_id, user_id))
     conn.execute("DELETE FROM consultations WHERE patient_id = ? OR doctor_id = ?", (user_id, user_id))
     conn.execute("DELETE FROM prescriptions WHERE patient_id = ? OR doctor_id = ?", (user_id, user_id))
@@ -188,6 +190,37 @@ def delete_user(user_id):
     conn.close()
 
     return jsonify({"success": True, "message": f"Account for {user['name']} has been permanently removed."})
+
+@admin_bp.route("/users/<int:user_id>/reset-password", methods=["POST"])
+def reset_user_password(user_id):
+    admin = require_admin()
+    if not admin:
+        return jsonify({"success": False, "message": "Admin privileges required."}), 403
+
+    data = request.get_json() or {}
+    new_password = (data.get("new_password") or "").strip()
+
+    if len(new_password) < 6:
+        return jsonify({"success": False, "message": "Password must be at least 6 characters long."}), 400
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        return jsonify({"success": False, "message": "User not found."}), 404
+
+    pw_hash = generate_password_hash(new_password)
+    conn.execute("UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (pw_hash, user_id))
+
+    conn.execute("""
+        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
+        VALUES (?, ?, ?, ?, ?)
+    """, (admin["id"], "ADMIN_PASSWORD_RESET", "User", str(user_id), json.dumps({"target_user": user["email"], "target_name": user["name"]})))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True, "message": f"Password for {user['name']} has been reset successfully."})
 
 @admin_bp.route("/users/<int:user_id>/permissions", methods=["PATCH", "PUT"])
 def update_user_permissions(user_id):

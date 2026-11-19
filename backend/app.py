@@ -90,6 +90,8 @@ def create_app():
     # Generic static file handler
     @app.route("/<path:path>")
     def static_files(path):
+        if path.startswith("api/"):
+            return jsonify({"success": False, "message": f"API endpoint /{path} not found"}), 404
         target = frontend_dir / path
         if target.is_file():
             return send_from_directory(str(frontend_dir), path)

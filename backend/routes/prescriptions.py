@@ -18,7 +18,7 @@ def prescriptions():
         sql = """
             SELECT p.*,
                    pat.name as patient_name, pat.email as patient_email,
-                   doc.name as doctor_name, d.specialty as doctor_specialty, d.license_number, d.clinic_name
+                   doc.name as doctor_name, doc.avatar as doctor_avatar, d.specialty as doctor_specialty, d.license_number, d.clinic_name
             FROM prescriptions p
             JOIN users pat ON p.patient_id = pat.id
             JOIN users doc ON p.doctor_id = doc.id

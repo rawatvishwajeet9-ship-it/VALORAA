@@ -96,10 +96,17 @@ async function apiRequest(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, config);
-    const data = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    let data;
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      data = { success: response.ok, message: text || `HTTP ${response.status}` };
+    }
 
     if (!response.ok) {
-      const errMsg = data.message || `Request failed with status ${response.status}`;
+      const errMsg = (data && data.message) || `Request failed with status ${response.status}`;
       throw new Error(errMsg);
     }
 

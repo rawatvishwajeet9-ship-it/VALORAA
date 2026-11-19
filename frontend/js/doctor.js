@@ -62,6 +62,10 @@ async function loadDoctorDashboard() {
                 </button>
               ` : ''}
               ${a.status === 'confirmed' ? `
+                <button class="btn btn-outline btn-sm" style="color:#7c3aed;border-color:#ddd6fe;" onclick="openDoctorUploadModal(${a.patient_id}, '${escapeHtml(a.patient_name)}')">
+                  <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Upload Report
+                </button>
                 <button class="btn btn-primary btn-sm" onclick="openConsultationModal(${a.id}, ${a.patient_id}, '${escapeHtml(a.patient_name)}', '${escapeHtml(a.time_slot || '')}')">
                   Start Consultation
                 </button>
@@ -129,6 +133,10 @@ async function loadDoctorAppointments() {
             ` : ''}
 
             ${a.status === 'confirmed' ? `
+              <button class="btn btn-outline btn-sm" style="color:#7c3aed;border-color:#ddd6fe;" onclick="openDoctorUploadModal(${a.patient_id}, '${escapeHtml(a.patient_name)}')">
+                <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload Report
+              </button>
               <button class="btn btn-primary btn-sm" onclick="openConsultationModal(${a.id}, ${a.patient_id}, '${escapeHtml(a.patient_name)}', '${escapeHtml(a.time_slot)}')">
                 <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="white"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 Start Consultation
@@ -278,16 +286,53 @@ function filterPatientsRoster(query) {
   renderDoctorPatients(filtered);
 }
 
-// Open Consultation Modal
-function openConsultationModal(apptId, patientId, patientName, timeSlot = '10:00 AM') {
+// Open Consultation Modal & Preload Patient's Latest Updated Vitals
+async function openConsultationModal(apptId, patientId, patientName, timeSlot = '10:00 AM') {
   document.getElementById('consult-appt-id').value = apptId || '';
   document.getElementById('consult-patient-id').value = patientId;
   document.getElementById('consult-patient-name-display').textContent = patientName;
   document.getElementById('consult-timeslot-badge').textContent = `Apt: ${timeSlot}`;
+
+  const bpInput = document.getElementById('consult-bp');
+  const hrInput = document.getElementById('consult-hr');
+  const tempInput = document.getElementById('consult-temp');
+  const spo2Input = document.getElementById('consult-spo2');
+  const weightInput = document.getElementById('consult-weight');
+  const metaEl = document.getElementById('consult-vitals-meta');
+
+  if (metaEl) {
+    metaEl.textContent = 'Fetching latest clinical vitals...';
+    metaEl.style.color = '#0d9488';
+  }
+
   openModal('modal-consultation');
+
+  try {
+    const res = await api.get(`/patient/${patientId}/vitals`);
+    if (res.success && res.vitals) {
+      const v = res.vitals;
+      if (bpInput) bpInput.value = v.blood_pressure || '120/80 mmHg';
+      if (hrInput) hrInput.value = v.heart_rate || 72;
+      if (tempInput) tempInput.value = v.temperature || 98.6;
+      if (spo2Input) spo2Input.value = v.spo2 || 99;
+      if (weightInput) weightInput.value = v.weight_kg || 70;
+
+      if (metaEl) {
+        if (v.last_updated_at) {
+          metaEl.textContent = `Latest Patient Vitals: Updated by ${v.last_updated_by || 'Physician'} (${formatDate(v.last_updated_at)})`;
+          metaEl.style.color = '#0d9488';
+        } else {
+          metaEl.textContent = 'Baseline Clinical Vitals (No prior consultation logged)';
+          metaEl.style.color = '#64748b';
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Could not fetch latest patient vitals:', err);
+  }
 }
 
-// Submit Consultation Form with Strict Validation
+// Submit Consultation Form with Strict Physiological Validation
 async function submitConsultation(e) {
   e.preventDefault();
   const appointment_id = document.getElementById('consult-appt-id').value ? parseInt(document.getElementById('consult-appt-id').value) : null;
@@ -304,27 +349,66 @@ async function submitConsultation(e) {
   const weight = weightInput ? parseFloat(weightInput) : null;
   const follow_up_date = document.getElementById('consult-followup').value;
 
-  if (!diagnosis) {
-    showToast('Clinical diagnosis is required.', 'error');
+  if (!diagnosis || diagnosis.length < 2) {
+    showToast('Clinical diagnosis is required (minimum 2 characters).', 'error');
+    document.getElementById('consult-diagnosis').focus();
     return;
   }
 
+  // Strictly Validate Blood Pressure (Systolic/Diastolic)
+  const bpMatch = bp.match(/^(\d{2,3})\s*\/\s*(\d{2,3})(?:\s*mmHg)?$/i);
+  if (!bpMatch) {
+    showToast('Invalid Blood Pressure format. Use systolic/diastolic format (e.g. 120/80 mmHg).', 'error');
+    document.getElementById('consult-bp').focus();
+    return;
+  }
+  const sys = parseInt(bpMatch[1], 10);
+  const dia = parseInt(bpMatch[2], 10);
+  if (sys < 50 || sys > 260) {
+    showToast('Systolic blood pressure must be between 50 and 260 mmHg.', 'error');
+    document.getElementById('consult-bp').focus();
+    return;
+  }
+  if (dia < 30 || dia > 180) {
+    showToast('Diastolic blood pressure must be between 30 and 180 mmHg.', 'error');
+    document.getElementById('consult-bp').focus();
+    return;
+  }
+  if (sys <= dia) {
+    showToast('Systolic pressure must be strictly greater than diastolic pressure.', 'error');
+    document.getElementById('consult-bp').focus();
+    return;
+  }
+  const formattedBp = `${sys}/${dia} mmHg`;
+
   // Strictly Validate Physiological Ranges
-  if (isNaN(hr) || hr < 40 || hr > 220) {
-    showToast('Heart rate / pulse must be between 40 and 220 bpm.', 'error');
+  if (isNaN(hr) || hr < 35 || hr > 220) {
+    showToast('Pulse / Heart rate must be between 35 and 220 bpm.', 'error');
+    document.getElementById('consult-hr').focus();
     return;
   }
   if (isNaN(temp) || temp < 90.0 || temp > 108.0) {
-    showToast('Temperature must be between 90.0°F and 108.0°F.', 'error');
+    showToast('Body temperature must be between 90.0°F and 108.0°F.', 'error');
+    document.getElementById('consult-temp').focus();
     return;
   }
-  if (isNaN(spo2) || spo2 < 70 || spo2 > 100) {
-    showToast('SpO2 oxygen saturation must be between 70% and 100%.', 'error');
+  if (isNaN(spo2) || spo2 < 60 || spo2 > 100) {
+    showToast('SpO2 oxygen saturation must be between 60% and 100%.', 'error');
+    document.getElementById('consult-spo2').focus();
     return;
   }
-  if (weight !== null && (isNaN(weight) || weight < 2.0 || weight > 400.0)) {
-    showToast('Patient weight must be between 2 kg and 400 kg.', 'error');
+  if (weight !== null && (isNaN(weight) || weight < 1.0 || weight > 400.0)) {
+    showToast('Patient weight must be between 1 kg and 400 kg.', 'error');
+    document.getElementById('consult-weight').focus();
     return;
+  }
+  if (follow_up_date) {
+    const today = new Date().toISOString().split('T')[0];
+    if (follow_up_date < today) {
+      showToast('Follow-up review date cannot be in the past.', 'error');
+      document.getElementById('consult-followup').focus();
+      return;
+    }
   }
 
   try {
@@ -335,7 +419,7 @@ async function submitConsultation(e) {
       symptoms: symptomsRaw.split(',').map(s => s.trim()).filter(Boolean),
       clinical_notes,
       treatment_plan,
-      blood_pressure: bp || '120/80 mmHg',
+      blood_pressure: formattedBp,
       heart_rate: hr,
       temperature: temp,
       spo2,
@@ -361,34 +445,191 @@ async function submitConsultation(e) {
   }
 }
 
+// Predefined Prescribable Medications Catalog
+const PREDEFINED_MEDICATIONS = [
+  {
+    category: "Pain, Fever & Anti-Inflammatory",
+    items: [
+      "Paracetamol 500mg",
+      "Paracetamol 650mg (Dolo / Calpol)",
+      "Ibuprofen 400mg (Brufen)",
+      "Aceclofenac 100mg + Paracetamol 325mg (Zerodol-P)",
+      "Mefenamic Acid 500mg (Meftal)",
+      "Tramadol 50mg"
+    ]
+  },
+  {
+    category: "Antibiotics & Anti-Infectives",
+    items: [
+      "Amoxicillin 500mg (Novamox)",
+      "Amoxicillin 500mg + Clavulanic Acid 125mg (Augmentin 625)",
+      "Azithromycin 500mg (Azee / Zithromax)",
+      "Ciprofloxacin 500mg (Ciplox)",
+      "Doxycycline 100mg (Dox-100)",
+      "Cefixime 200mg (Taxim-O)",
+      "Metronidazole 400mg (Flagyl)"
+    ]
+  },
+  {
+    category: "Gastrointestinal, Acid & Nausea",
+    items: [
+      "Pantoprazole 40mg (Pan 40)",
+      "Omeprazole 20mg (Omez)",
+      "Rabeprazole 20mg (Rablet)",
+      "Domperidone 10mg + Pantoprazole 40mg (Pan-D)",
+      "Ondansetron 4mg (Emeset)",
+      "Antacid Suspension 10ml (Gelusil / Digene)"
+    ]
+  },
+  {
+    category: "Cardiovascular & Hypertension",
+    items: [
+      "Amlodipine 5mg (Amlong)",
+      "Telmisartan 40mg (Telma 40)",
+      "Telmisartan 40mg + Amlodipine 5mg (Telma-AM)",
+      "Losartan 50mg (Repace)",
+      "Atenolol 50mg (Aten)",
+      "Atorvastatin 10mg (Atorva 10)",
+      "Atorvastatin 20mg",
+      "Ecosprin 75mg (Aspirin)"
+    ]
+  },
+  {
+    category: "Diabetes & Endocrine",
+    items: [
+      "Metformin 500mg (Glycomet)",
+      "Metformin 1000mg (Glycomet SR)",
+      "Glimepiride 1mg (Amaryl)",
+      "Glimepiride 2mg",
+      "Thyroxine Sodium 25mcg (Thyronorm)",
+      "Thyroxine Sodium 50mcg",
+      "Thyroxine Sodium 100mcg"
+    ]
+  },
+  {
+    category: "Respiratory, Cough & Allergy",
+    items: [
+      "Cetirizine 10mg (Cetzine)",
+      "Levocetirizine 5mg (Levocet)",
+      "Montelukast 10mg + Levocetirizine 5mg (Montair-LC)",
+      "Dextromethorphan Cough Syrup 100ml",
+      "Ambroxol + Levosalbutamol Cough Syrup",
+      "Salbutamol Inhaler (Asthalin)"
+    ]
+  },
+  {
+    category: "Vitamins, Minerals & Supplements",
+    items: [
+      "Calcium Carbonate 500mg + Vitamin D3 (Shelcal 500)",
+      "Vitamin B-Complex + Zinc (Becosules)",
+      "Vitamin C 500mg + Zinc (Limcee)",
+      "Iron + Folic Acid (Dexorange)",
+      "Vitamin D3 60,000 IU (Calcirol)",
+      "ORS Electrolyte Powder Sachet"
+    ]
+  }
+];
+
 // Open Prescription Modal
 function openPrescriptionModal(patientId, patientName, consultId = null, apptId = null) {
   document.getElementById('rx-patient-id').value = patientId;
   document.getElementById('rx-consult-id').value = consultId || '';
   document.getElementById('rx-appt-id').value = apptId || '';
   document.getElementById('rx-patient-name-banner').textContent = `Patient: ${patientName}`;
+  
+  const container = document.getElementById('medications-container');
+  if (container) {
+    container.innerHTML = '';
+    addMedicationRow();
+  }
+  
   openModal('modal-prescription');
 }
 
-// Add Medication Row to Prescription Modal
-function addMedicationRow() {
+// Add Medication Row to Prescription Modal with Predefined List & Custom Other
+function addMedicationRow(preset = null) {
   const container = document.getElementById('medications-container');
+  if (!container) return;
+
   const row = document.createElement('div');
-  row.className = 'form-row';
-  row.style.marginBottom = '10px';
-  row.style.display = 'grid';
-  row.style.gridTemplateColumns = '2fr 1.2fr 1.2fr 1fr 2fr auto';
-  row.style.gap = '8px';
-  row.style.alignItems = 'center';
+  row.className = 'form-row rx-med-row';
+  row.style.marginBottom = '12px';
+  row.style.padding = '12px';
+  row.style.background = '#f8fafc';
+  row.style.border = '1px solid #e2e8f0';
+  row.style.borderRadius = '10px';
+
+  let optionsHtml = '<option value="" disabled selected>-- Select Prescribed Medicine --</option>';
+  PREDEFINED_MEDICATIONS.forEach(cat => {
+    optionsHtml += `<optgroup label="${escapeHtml(cat.category)}">`;
+    cat.items.forEach(item => {
+      optionsHtml += `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`;
+    });
+    optionsHtml += `</optgroup>`;
+  });
+  optionsHtml += `<option value="OTHER" style="font-weight:700;color:#0d9488;">Other (Specify Custom Medicine)...</option>`;
+
   row.innerHTML = `
-    <input type="text" class="form-control med-name" placeholder="e.g. Amoxicillin, Paracetamol" required>
-    <input type="text" class="form-control med-dosage" placeholder="1 tablet (500mg)" required>
-    <input type="text" class="form-control med-freq" placeholder="Twice daily (1-0-1)" required>
-    <input type="text" class="form-control med-duration" placeholder="5 days" required>
-    <input type="text" class="form-control med-inst" placeholder="Take after meals with water">
-    <button type="button" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;padding:6px 10px;border-radius:6px;" onclick="this.parentElement.remove()">&times;</button>
+    <div style="display:grid;grid-template-columns:2.5fr 1.2fr 1.2fr 1fr 2fr auto;gap:8px;align-items:start;">
+      <div>
+        <label class="form-label" style="font-size:0.7rem;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Medicine *</label>
+        <select class="form-control med-select" onchange="handleMedSelectChange(this)" required>
+          ${optionsHtml}
+        </select>
+        <input type="text" class="form-control med-custom-name" placeholder="Type custom medicine name & strength..." style="display:none;margin-top:6px;border-color:#0d9488;background:#ffffff;">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:0.7rem;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Dosage *</label>
+        <input type="text" class="form-control med-dosage" list="rx-dosage-list" placeholder="1 tablet" value="${preset?.dosage || '1 tablet'}" required>
+      </div>
+      <div>
+        <label class="form-label" style="font-size:0.7rem;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Frequency *</label>
+        <input type="text" class="form-control med-freq" list="rx-freq-list" placeholder="Twice daily (1-0-1)" value="${preset?.frequency || 'Twice daily'}" required>
+      </div>
+      <div>
+        <label class="form-label" style="font-size:0.7rem;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Duration *</label>
+        <input type="text" class="form-control med-duration" list="rx-duration-list" placeholder="5 days" value="${preset?.duration || '5 days'}" required>
+      </div>
+      <div>
+        <label class="form-label" style="font-size:0.7rem;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Instructions</label>
+        <input type="text" class="form-control med-inst" list="rx-inst-list" placeholder="Take after meals with water" value="${preset?.instructions || 'Take after meal'}">
+      </div>
+      <div style="padding-top:20px;">
+        <button type="button" class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none;padding:8px 10px;border-radius:6px;font-weight:700;" title="Remove Medicine" onclick="this.closest('.rx-med-row').remove()">&times;</button>
+      </div>
+    </div>
   `;
   container.appendChild(row);
+
+  if (preset && preset.name) {
+    const sel = row.querySelector('.med-select');
+    const custom = row.querySelector('.med-custom-name');
+    let matched = false;
+    for (let opt of sel.options) {
+      if (opt.value.toLowerCase() === preset.name.toLowerCase()) {
+        sel.value = opt.value;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      sel.value = 'OTHER';
+      custom.style.display = 'block';
+      custom.value = preset.name;
+    }
+  }
+}
+
+function handleMedSelectChange(selectEl) {
+  const row = selectEl.closest('.rx-med-row');
+  const customInput = row.querySelector('.med-custom-name');
+  if (selectEl.value === 'OTHER') {
+    customInput.style.display = 'block';
+    customInput.focus();
+  } else {
+    customInput.style.display = 'none';
+    customInput.value = '';
+  }
 }
 
 // Submit Prescription Form
@@ -398,21 +639,36 @@ async function submitPrescription(e) {
   const consultation_id = document.getElementById('rx-consult-id').value ? parseInt(document.getElementById('rx-consult-id').value) : null;
   const appointment_id = document.getElementById('rx-appt-id').value ? parseInt(document.getElementById('rx-appt-id').value) : null;
 
-  const medRows = document.querySelectorAll('#medications-container .form-row');
+  const medRows = document.querySelectorAll('#medications-container .rx-med-row');
   const medications = [];
 
-  medRows.forEach(row => {
-    const name = row.querySelector('.med-name')?.value.trim();
-    if (name) {
-      medications.push({
-        medicineName: name,
-        dosage: row.querySelector('.med-dosage')?.value.trim() || '1 tablet',
-        frequency: row.querySelector('.med-freq')?.value.trim() || 'Twice daily',
-        duration: row.querySelector('.med-duration')?.value.trim() || '5 days',
-        instructions: row.querySelector('.med-inst')?.value.trim() || 'After meals'
-      });
+  for (const row of medRows) {
+    const sel = row.querySelector('.med-select');
+    const custom = row.querySelector('.med-custom-name');
+    let medName = sel ? sel.value : '';
+    if (medName === 'OTHER') {
+      medName = custom ? custom.value.trim() : '';
     }
-  });
+    if (!medName) {
+      showToast('Please select or specify a medication name for all prescribed drugs.', 'error');
+      if (custom && custom.style.display !== 'none') custom.focus();
+      else if (sel) sel.focus();
+      return;
+    }
+
+    const dosage = row.querySelector('.med-dosage')?.value.trim() || '1 tablet';
+    const frequency = row.querySelector('.med-freq')?.value.trim() || 'Once daily';
+    const duration = row.querySelector('.med-duration')?.value.trim() || '5 days';
+    const instructions = row.querySelector('.med-inst')?.value.trim() || 'After meals';
+
+    medications.push({
+      medicineName: medName,
+      dosage,
+      frequency,
+      duration,
+      instructions
+    });
+  }
 
   if (medications.length === 0) {
     showToast('Please add at least one medication to the prescription.', 'error');
@@ -697,3 +953,73 @@ async function submitReviewReply(reviewId) {
   }
 }
 window.submitReviewReply = submitReviewReply;
+
+// Universal Doctor Upload Record Modal Handlers
+function openDoctorUploadModal(patientId, patientName) {
+  const targetInput = document.getElementById('upload-target-patient-id');
+  if (targetInput) targetInput.value = patientId;
+  const nameEl = document.getElementById('upload-modal-patient-name');
+  if (nameEl) nameEl.textContent = patientName || 'Patient';
+  openModal('modal-upload-record');
+}
+window.openDoctorUploadModal = openDoctorUploadModal;
+
+function updateSelectedFileName(input) {
+  const display = document.getElementById('selected-file-display');
+  if (!display) return;
+  if (input.files && input.files[0]) {
+    display.textContent = `Selected: ${input.files[0].name} (${(input.files[0].size/1024).toFixed(1)} KB)`;
+  } else {
+    display.textContent = '';
+  }
+}
+window.updateSelectedFileName = updateSelectedFileName;
+
+async function handleDoctorUploadRecord(e) {
+  if (e) e.preventDefault();
+  const patientId = document.getElementById('upload-target-patient-id')?.value;
+  const fileInput = document.getElementById('rec-file-input');
+  const title = (document.getElementById('rec-title')?.value || '').trim();
+  const record_type = document.getElementById('rec-type')?.value || 'lab_report';
+  const facility = (document.getElementById('rec-facility')?.value || 'VALORA Health Diagnostics').trim();
+  const description = (document.getElementById('rec-summary')?.value || '').trim();
+  const tags = (document.getElementById('rec-tags')?.value || '').trim();
+
+  if (!title) {
+    showToast('Record title is required.', 'error');
+    return;
+  }
+
+  const formData = new FormData();
+  if (patientId) formData.append('patient_id', patientId);
+  formData.append('title', title);
+  formData.append('record_type', record_type);
+  formData.append('facility_name', facility);
+  formData.append('facility_or_doctor', facility);
+  formData.append('description', description);
+  formData.append('tags', tags);
+
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    formData.append('file', fileInput.files[0]);
+  }
+
+  try {
+    showToast('Encrypting and securing report in vault...', 'info');
+    const res = await api.upload('/records', formData);
+    if (res.success) {
+      closeModal('modal-upload-record');
+      showToast('Diagnostic report successfully uploaded and secured in patient vault!', 'success');
+      const form = document.getElementById('upload-record-form');
+      if (form) form.reset();
+      const display = document.getElementById('selected-file-display');
+      if (display) display.textContent = '';
+      if (typeof loadDoctorPatients === 'function') loadDoctorPatients();
+      if (typeof loadDoctorAppointments === 'function') loadDoctorAppointments();
+      if (typeof loadDoctorDashboard === 'function') loadDoctorDashboard();
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to upload report.', 'error');
+  }
+}
+window.handleDoctorUploadRecord = handleDoctorUploadRecord;
+

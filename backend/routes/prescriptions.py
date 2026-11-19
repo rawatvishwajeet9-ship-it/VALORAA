@@ -75,6 +75,28 @@ def prescriptions():
             conn.close()
             return jsonify({"success": False, "message": "At least one medication is required."}), 400
 
+        parsed_meds = []
+        for m in medications:
+            if isinstance(m, dict):
+                m_name = (m.get("name") or m.get("medicineName") or m.get("drug_name") or "").strip()
+                if m_name:
+                    parsed_meds.append({
+                        "name": m_name,
+                        "medicineName": m_name,
+                        "drug_name": m_name,
+                        "dosage": (m.get("dosage") or "1 tablet").strip(),
+                        "frequency": (m.get("frequency") or "Once daily").strip(),
+                        "duration": (m.get("duration") or "5 days").strip(),
+                        "instructions": (m.get("instructions") or "After meals").strip()
+                    })
+
+        if not parsed_meds:
+            conn.close()
+            return jsonify({"success": False, "message": "Valid medication name is required."}), 400
+
+        diagnostic_tests = data.get("diagnostic_tests") or data.get("tests_recommended") or []
+        general_advice = (data.get("general_advice") or data.get("general_instructions") or "").strip()
+
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO prescriptions (
@@ -86,7 +108,7 @@ def prescriptions():
             appointment_id,
             patient_id,
             user["id"],
-            json.dumps(medications),
+            json.dumps(parsed_meds),
             json.dumps(diagnostic_tests),
             general_advice
         ))

@@ -307,3 +307,58 @@ def history():
         "success": True,
         "timeline": parsed_consultations
     })
+
+@patient_bp.route("/<int:patient_id>/vitals", methods=["GET"])
+@patient_bp.route("/vitals", methods=["GET"])
+def get_patient_vitals(patient_id=None):
+    user = get_current_user_from_req()
+    if not user:
+        return jsonify({"success": False, "message": "Authentication required."}), 401
+
+    if not patient_id:
+        target_id = request.args.get("patient_id")
+        if target_id:
+            try:
+                patient_id = int(target_id)
+            except (ValueError, TypeError):
+                pass
+        else:
+            patient_id = user["id"]
+
+    conn = get_db()
+    # Check latest consultation for vitals
+    latest_consult = conn.execute("""
+        SELECT c.*, doc.name as doctor_name
+        FROM consultations c
+        JOIN users doc ON c.doctor_id = doc.id
+        WHERE c.patient_id = ?
+        ORDER BY c.consultation_date DESC, c.id DESC LIMIT 1
+    """, (patient_id,)).fetchone()
+
+    patient_row = conn.execute("SELECT * FROM patients WHERE user_id = ?", (patient_id,)).fetchone()
+    conn.close()
+
+    if latest_consult:
+        vitals = {
+            "blood_pressure": latest_consult["blood_pressure"] or "120/80 mmHg",
+            "heart_rate": latest_consult["heart_rate"] if latest_consult["heart_rate"] else 72,
+            "temperature": latest_consult["temperature"] if latest_consult["temperature"] else 98.6,
+            "spo2": latest_consult["spo2"] if latest_consult["spo2"] else 99,
+            "weight_kg": latest_consult["weight_kg"] if latest_consult["weight_kg"] else (patient_row["weight_kg"] if patient_row and patient_row["weight_kg"] else 70.0),
+            "height_cm": latest_consult["height_cm"] if latest_consult["height_cm"] else (patient_row["height_cm"] if patient_row and patient_row["height_cm"] else 175.0),
+            "last_updated_by": latest_consult["doctor_name"] or "Attending Physician",
+            "last_updated_at": latest_consult["consultation_date"] or latest_consult["created_at"]
+        }
+    else:
+        vitals = {
+            "blood_pressure": "120/80 mmHg",
+            "heart_rate": 72,
+            "temperature": 98.6,
+            "spo2": 99,
+            "weight_kg": patient_row["weight_kg"] if patient_row and patient_row["weight_kg"] else 70.0,
+            "height_cm": patient_row["height_cm"] if patient_row and patient_row["height_cm"] else 175.0,
+            "last_updated_by": "System Baseline",
+            "last_updated_at": None
+        }
+
+    return jsonify({"success": True, "vitals": vitals})

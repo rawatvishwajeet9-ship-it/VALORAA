@@ -317,10 +317,13 @@
               <label class="form-label" for="rec-type" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">DOCUMENT CATEGORY *</label>
               <select id="rec-type" class="form-control" required>
                 <option value="lab_report">Blood / Lab Diagnostic Report</option>
-                <option value="xray_mri">Radiology / X-Ray / MRI</option>
+                <option value="xray">Radiology / X-Ray / MRI / CT Scan</option>
+                <option value="mri_scan">MRI Scan</option>
+                <option value="ct_scan">CT Scan</option>
+                <option value="ultrasound">Ultrasound Sonography</option>
                 <option value="prescription">Prescription</option>
                 <option value="discharge_summary">Discharge Summary</option>
-                <option value="clinical_note">Clinical Note</option>
+                <option value="other">Clinical Note / Other</option>
               </select>
             </div>
             <div class="form-group">
@@ -331,7 +334,7 @@
 
           <!-- File Upload Dropzone -->
           <div class="form-group">
-            <label class="form-label" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">SELECT MEDICAL FILE (PDF, DICOM, JPG, PNG) *</label>
+            <label class="form-label" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">SELECT MEDICAL FILE (PDF, DICOM, JPG, PNG, WEBP) *</label>
             <div style="border:2px dashed #99f6e4;border-radius:14px;padding:28px 20px;text-align:center;background:#f0fdfa;">
               <div style="width:48px;height:48px;border-radius:14px;background:#e6f7f5;color:#0d9488;margin:0 auto 12px auto;display:flex;align-items:center;justify-content:center;">
                 <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -340,9 +343,9 @@
                 Click to browse device library or drop report here
               </div>
               <div style="font-size:0.78rem;color:#64748b;margin-bottom:14px;">
-                Supported: PDF, DICOM, JPG, PNG up to 25MB
+                Supported: PDF, DICOM, JPG, PNG, WEBP up to 32MB
               </div>
-              <input type="file" id="rec-file-input" style="display:none;" onchange="updateSelectedFileName(this)">
+              <input type="file" id="rec-file-input" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.dcm,.dicom" style="display:none;" onchange="updateSelectedFileName(this)">
               <button type="button" class="btn" style="background:#ffffff;border:1px solid #99f6e4;color:#0d9488;font-weight:700;" onclick="document.getElementById('rec-file-input').click()">
                 <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                 Browse System Files
@@ -418,10 +421,11 @@
       formData.append('title', document.getElementById('rec-title').value.trim());
       formData.append('record_type', document.getElementById('rec-type').value);
       formData.append('facility_name', document.getElementById('rec-facility').value.trim());
+      formData.append('facility_or_doctor', document.getElementById('rec-facility').value.trim());
       formData.append('description', document.getElementById('rec-summary').value.trim());
       formData.append('tags', document.getElementById('rec-tags').value.trim());
 
-      if (fileInput.files[0]) {
+      if (fileInput.files && fileInput.files[0]) {
         formData.append('file', fileInput.files[0]);
       }
 
@@ -430,6 +434,12 @@
         if (res.success) {
           closeModal('modal-upload-record');
           showToast('Medical document saved & secured in vault!', 'success');
+          document.getElementById('upload-record-form').reset();
+          const display = document.getElementById('selected-file-display');
+          if (display) display.textContent = '';
+          if (typeof loadDoctorPatients === 'function') {
+            loadDoctorPatients();
+          }
         }
       } catch (error) {
         showToast(error.message, 'error');

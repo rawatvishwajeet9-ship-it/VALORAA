@@ -9,7 +9,7 @@ def get_db():
     """Get a database connection with dict-like row access."""
     db_path = Config.DATABASE_PATH
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db_path))
+    conn = sqlite3.connect(str(db_path), timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
@@ -20,10 +20,13 @@ def init_database(app=None):
     if not schema_path.exists():
         schema_path = Config.BASE_DIR / "database" / "schema.sql"
 
-    with get_db() as conn:
+    conn = get_db()
+    try:
         with open(schema_path, "r", encoding="utf-8") as f:
             conn.executescript(f.read())
         conn.commit()
+    finally:
+        conn.close()
 
     ensure_admin_user()
     ensure_demo_accounts()

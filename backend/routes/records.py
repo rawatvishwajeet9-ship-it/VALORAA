@@ -9,6 +9,23 @@ from backend.routes.auth import get_current_user_from_req
 
 records_bp = Blueprint("records", __name__, url_prefix="/api/records")
 
+RECORD_TYPE_MAP = {
+    "lab_report": "lab_report",
+    "blood": "lab_report",
+    "xray": "xray",
+    "xray_mri": "xray",
+    "x-ray": "xray",
+    "mri": "mri_scan",
+    "mri_scan": "mri_scan",
+    "ct": "ct_scan",
+    "ct_scan": "ct_scan",
+    "ultrasound": "ultrasound",
+    "prescription": "prescription",
+    "discharge_summary": "discharge_summary",
+    "clinical_note": "other",
+    "other": "other"
+}
+
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in Config.ALLOWED_EXTENSIONS
 
@@ -24,7 +41,10 @@ def records():
         target_patient_id = user["id"]
         # If doctor or admin, can pass specific patient_id
         if user["role"] in ["doctor", "admin"] and request.args.get("patient_id"):
-            target_patient_id = int(request.args.get("patient_id"))
+            try:
+                target_patient_id = int(request.args.get("patient_id"))
+            except (ValueError, TypeError):
+                pass
 
         record_type = request.args.get("type")
         query = request.args.get("q", "").strip().lower()
@@ -38,8 +58,19 @@ def records():
         params = [target_patient_id]
 
         if record_type:
-            sql += " AND r.record_type = ?"
-            params.append(record_type)
+            rt_lower = record_type.strip().lower()
+            if rt_lower in ["xray_mri", "xray"]:
+                sql += " AND r.record_type IN ('xray', 'mri_scan', 'ct_scan', 'ultrasound')"
+            elif rt_lower in ["mri", "mri_scan"]:
+                sql += " AND r.record_type = 'mri_scan'"
+            elif rt_lower in ["ct", "ct_scan"]:
+                sql += " AND r.record_type = 'ct_scan'"
+            elif rt_lower in RECORD_TYPE_MAP:
+                sql += " AND r.record_type = ?"
+                params.append(RECORD_TYPE_MAP[rt_lower])
+            else:
+                sql += " AND r.record_type = ?"
+                params.append(record_type)
 
         if query:
             sql += " AND (LOWER(r.title) LIKE ? OR LOWER(r.description) LIKE ? OR LOWER(r.facility_or_doctor) LIKE ?)"
@@ -55,6 +86,8 @@ def records():
         for r in rows:
             item = dict(r)
             item["tags"] = json.loads(r["tags"] or "[]")
+            item["facility_name"] = r["facility_or_doctor"] or "VALORA Health Diagnostics"
+            item["file_name"] = os.path.basename(r["file_url"]) if r["file_url"] else "document.pdf"
             records_list.append(item)
 
         return jsonify({"success": True, "records": records_list})
@@ -62,12 +95,17 @@ def records():
     elif request.method == "POST":
         target_patient_id = user["id"]
         if user["role"] in ["doctor", "admin"] and request.form.get("patient_id"):
-            target_patient_id = int(request.form.get("patient_id"))
+            try:
+                target_patient_id = int(request.form.get("patient_id"))
+            except (ValueError, TypeError):
+                pass
 
         title = (request.form.get("title") or "").strip()
-        record_type = request.form.get("record_type", "lab_report")
-        description = (request.form.get("description") or "").strip()
-        facility = (request.form.get("facility_or_doctor") or "VALORA Health").strip()
+        raw_type = (request.form.get("record_type") or "lab_report").strip().lower()
+        record_type = RECORD_TYPE_MAP.get(raw_type, "other")
+
+        description = (request.form.get("description") or request.form.get("summary") or "").strip()
+        facility = (request.form.get("facility_or_doctor") or request.form.get("facility_name") or "VALORA Health Diagnostics").strip()
         tags_raw = request.form.get("tags", "")
 
         tags = [t.strip() for t in tags_raw.split(",") if t.strip()] if tags_raw else []
@@ -84,7 +122,7 @@ def records():
         if file and file.filename:
             if not allowed_file(file.filename):
                 conn.close()
-                return jsonify({"success": False, "message": f"Unsupported file format. Allowed: {', '.join(Config.ALLOWED_EXTENSIONS)}"}), 400
+                return jsonify({"success": False, "message": f"Unsupported file format. Allowed: {', '.join(sorted(Config.ALLOWED_EXTENSIONS))}"}), 400
 
             ext = file.filename.rsplit(".", 1)[1].lower()
             safe_name = f"{uuid.uuid4().hex[:12]}_{secure_filename(file.filename)}"
@@ -101,40 +139,52 @@ def records():
             file_type = "application/pdf"
             file_size = 500000
 
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO medical_records (
-                patient_id, uploaded_by, record_type, title, description,
-                file_url, file_type, file_size, facility_or_doctor, tags
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            target_patient_id,
-            user["id"],
-            record_type,
-            title,
-            description,
-            file_url,
-            file_type,
-            file_size,
-            facility,
-            json.dumps(tags)
-        ))
-        record_id = cursor.lastrowid
+        try:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO medical_records (
+                    patient_id, uploaded_by, record_type, title, description,
+                    file_url, file_type, file_size, facility_or_doctor, tags
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                target_patient_id,
+                user["id"],
+                record_type,
+                title,
+                description,
+                file_url,
+                file_type,
+                file_size,
+                facility,
+                json.dumps(tags)
+            ))
+            record_id = cursor.lastrowid
 
-        cursor.execute("""
-            INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
-            VALUES (?, ?, ?, ?, ?)
-        """, (user["id"], "MEDICAL_RECORD_UPLOADED", "MedicalRecord", str(record_id), json.dumps({"title": title, "type": record_type})))
+            cursor.execute("""
+                INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user["id"], "MEDICAL_RECORD_UPLOADED", "MedicalRecord", str(record_id), json.dumps({"title": title, "type": record_type})))
 
-        conn.commit()
-        conn.close()
+            conn.commit()
+            conn.close()
 
-        return jsonify({
-            "success": True,
-            "message": "Medical record uploaded and encrypted to patient vault successfully!",
-            "record_id": record_id,
-            "file_url": file_url
-        }), 201
+            return jsonify({
+                "success": True,
+                "message": "Medical record uploaded and encrypted to patient vault successfully!",
+                "record_id": record_id,
+                "file_url": file_url
+            }), 201
+        except Exception as e:
+            if conn:
+                try:
+                    conn.rollback()
+                    conn.close()
+                except Exception:
+                    pass
+            return jsonify({
+                "success": False,
+                "message": f"Failed to save medical record: {str(e)}"
+            }), 400
 
 @records_bp.route("/<int:record_id>", methods=["DELETE"])
 def delete_record(record_id):

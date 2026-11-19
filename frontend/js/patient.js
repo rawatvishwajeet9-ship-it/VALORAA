@@ -397,26 +397,16 @@ async function refreshBookedSlots() {
 
     const pills = document.querySelectorAll('#modal-book-appointment .time-slot-pill');
     pills.forEach(pill => {
-      const slot = pill.getAttribute('data-slot') || pill.textContent.trim();
+      const slot = pill.getAttribute('data-slot') || pill.textContent.replace(/\s*\(Booked\)/i, '').trim();
       if (booked.includes(slot)) {
         pill.classList.add('booked');
         pill.classList.remove('active');
-        pill.setAttribute('title', 'Slot is already booked and confirmed');
-        pill.style.background = '#e2e8f0';
-        pill.style.color = '#94a3b8';
-        pill.style.cursor = 'not-allowed';
-        pill.style.pointerEvents = 'none';
-        pill.style.textDecoration = 'line-through';
-        pill.style.opacity = '0.5';
+        pill.setAttribute('title', 'This slot is already booked by another patient.');
+        pill.innerHTML = `${escapeHtml(slot)} <span style="display:block;font-size:0.65rem;color:#f87171;font-weight:700;">(Booked)</span>`;
       } else {
         pill.classList.remove('booked');
         pill.removeAttribute('title');
-        pill.style.background = '';
-        pill.style.color = '';
-        pill.style.cursor = 'pointer';
-        pill.style.pointerEvents = 'auto';
-        pill.style.textDecoration = 'none';
-        pill.style.opacity = '1';
+        pill.innerHTML = escapeHtml(slot);
       }
     });
 
@@ -432,7 +422,7 @@ window.refreshBookedSlots = refreshBookedSlots;
 
 function selectTimeSlot(el, slot) {
   if (el.classList.contains('booked')) {
-    showToast('This time slot is already booked. Please choose another slot.', 'error');
+    showToast('This time slot is already booked by another patient and cannot be selected.', 'error');
     return;
   }
   document.querySelectorAll('#modal-book-appointment .time-slot-pill').forEach(p => p.classList.remove('active'));

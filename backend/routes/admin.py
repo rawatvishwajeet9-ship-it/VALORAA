@@ -154,6 +154,67 @@ def toggle_user_status(user_id):
 
     return jsonify({"success": True, "message": f"User status updated to {new_status}."})
 
+@admin_bp.route("/users/<int:user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    admin = require_admin()
+    if not admin:
+        return jsonify({"success": False, "message": "Admin privileges required."}), 403
+
+    if user_id == admin["id"]:
+        return jsonify({"success": False, "message": "Admin cannot remove their own account."}), 400
+
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        return jsonify({"success": False, "message": "User not found."}), 404
+
+    # Delete related clinical and account records
+    conn.execute("DELETE FROM appointments WHERE patient_id = ? OR doctor_id = ?", (user_id, user_id))
+    conn.execute("DELETE FROM consultations WHERE patient_id = ? OR doctor_id = ?", (user_id, user_id))
+    conn.execute("DELETE FROM prescriptions WHERE patient_id = ? OR doctor_id = ?", (user_id, user_id))
+    conn.execute("DELETE FROM medical_records WHERE patient_id = ? OR uploaded_by = ?", (user_id, user_id))
+    conn.execute("DELETE FROM doctor_patient_access WHERE patient_id = ? OR doctor_id = ?", (user_id, user_id))
+    conn.execute("DELETE FROM patients WHERE user_id = ?", (user_id,))
+    conn.execute("DELETE FROM doctors WHERE user_id = ?", (user_id,))
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+    conn.execute("""
+        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
+        VALUES (?, ?, ?, ?, ?)
+    """, (admin["id"], "USER_ACCOUNT_REMOVED", "User", str(user_id), json.dumps({"name": user["name"], "email": user["email"], "role": user["role"]})))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True, "message": f"Account for {user['name']} has been permanently removed."})
+
+@admin_bp.route("/users/<int:user_id>/permissions", methods=["PATCH", "PUT"])
+def update_user_permissions(user_id):
+    admin = require_admin()
+    if not admin:
+        return jsonify({"success": False, "message": "Admin privileges required."}), 403
+
+    data = request.get_json() or {}
+    role = data.get("role")
+    status = data.get("status")
+
+    conn = get_db()
+    if role in ["patient", "doctor", "admin"]:
+        conn.execute("UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (role, user_id))
+    if status in ["active", "suspended", "pending_verification"]:
+        conn.execute("UPDATE users SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (status, user_id))
+    
+    conn.execute("""
+        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
+        VALUES (?, ?, ?, ?, ?)
+    """, (admin["id"], "USER_PERMISSIONS_UPDATED", "User", str(user_id), json.dumps({"role": role, "status": status})))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True, "message": "User permissions updated successfully."})
+
 @admin_bp.route("/appointments", methods=["GET"])
 def get_all_appointments():
     admin = require_admin()

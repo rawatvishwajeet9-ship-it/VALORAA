@@ -239,6 +239,9 @@ function renderAdminDoctorsTable(doctors) {
             ` : `
               <button class="btn btn-primary btn-sm" onclick="toggleUserStatus(${d.user_id}, 'active')">Activate</button>
             `}
+            <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:5px 9px;border-radius:6px;font-weight:600;" onclick="deleteUserAccount(${d.user_id}, '${escapeHtml(d.name)}')">
+              Remove
+            </button>
           </div>
         </td>
       </tr>
@@ -301,6 +304,24 @@ async function toggleUserStatus(userId, status) {
     showToast(error.message, 'error');
   }
 }
+
+// Permanently Delete / Remove User Account
+async function deleteUserAccount(userId, userName) {
+  if (!confirm(`Are you sure you want to permanently remove the account for "${userName}"? This will delete all clinical records, appointments, and credentials.`)) {
+    return;
+  }
+  try {
+    const res = await api.delete(`/admin/users/${userId}`);
+    if (res.success) {
+      showToast(res.message, 'success');
+      if (document.getElementById('admin-doctors-tbody')) loadAdminDoctors();
+      if (document.getElementById('admin-patients-tbody')) loadAdminPatients();
+    }
+  } catch (error) {
+    showToast(error.message, 'error');
+  }
+}
+window.deleteUserAccount = deleteUserAccount;
 
 // -------------------------------------------------------------
 // 3. Patient Governance with DSA Search
@@ -382,11 +403,16 @@ function renderAdminPatientsTable(patients) {
         </td>
         <td>${getStatusBadge(p.user_status)}</td>
         <td>
-          ${p.user_status === 'active' ? `
-            <button class="btn btn-danger btn-sm" onclick="toggleUserStatus(${p.user_id}, 'suspended')">Suspend</button>
-          ` : `
-            <button class="btn btn-primary btn-sm" onclick="toggleUserStatus(${p.user_id}, 'active')">Activate</button>
-          `}
+          <div style="display:flex;gap:6px;">
+            ${p.user_status === 'active' ? `
+              <button class="btn btn-danger btn-sm" onclick="toggleUserStatus(${p.user_id}, 'suspended')">Suspend</button>
+            ` : `
+              <button class="btn btn-primary btn-sm" onclick="toggleUserStatus(${p.user_id}, 'active')">Activate</button>
+            `}
+            <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;padding:5px 9px;border-radius:6px;font-weight:600;" onclick="deleteUserAccount(${p.user_id}, '${escapeHtml(p.name)}')">
+              Remove
+            </button>
+          </div>
         </td>
       </tr>
     `;

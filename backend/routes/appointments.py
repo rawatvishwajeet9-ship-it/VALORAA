@@ -83,7 +83,7 @@ def appointments():
         # Check for slot conflicts
         existing = conn.execute("""
             SELECT id FROM appointments 
-            WHERE doctor_id = ? AND appointment_date = ? AND time_slot = ? AND status NOT IN ('cancelled')
+            WHERE doctor_id = ? AND date(appointment_date) = date(?) AND time_slot = ? AND status NOT IN ('cancelled')
         """, (doctor_id, appointment_date, time_slot)).fetchone()
 
         if existing:
@@ -183,7 +183,7 @@ def get_booked_slots():
     conn = get_db()
     rows = conn.execute("""
         SELECT time_slot FROM appointments
-        WHERE doctor_id = ? AND appointment_date = ? AND status NOT IN ('cancelled')
+        WHERE doctor_id = ? AND date(appointment_date) = date(?) AND status NOT IN ('cancelled')
     """, (doctor_id, date_val)).fetchall()
     conn.close()
     

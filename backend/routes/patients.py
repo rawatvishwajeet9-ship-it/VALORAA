@@ -221,9 +221,11 @@ def dashboard():
     # Patient Vitals & Health Info
     patient_info = conn.execute("SELECT * FROM patients WHERE user_id = ?", (patient_id,)).fetchone()
     latest_consult = conn.execute("""
-        SELECT blood_pressure, heart_rate, temperature FROM consultations
-        WHERE patient_id = ? AND blood_pressure IS NOT NULL AND blood_pressure != ''
-        ORDER BY consultation_date DESC LIMIT 1
+        SELECT c.*, u.name as doctor_name
+        FROM consultations c
+        JOIN users u ON c.doctor_id = u.id
+        WHERE c.patient_id = ?
+        ORDER BY c.consultation_date DESC, c.id DESC LIMIT 1
     """, (patient_id,)).fetchone()
 
     blood_pressure = latest_consult["blood_pressure"] if latest_consult and latest_consult["blood_pressure"] else "120/80"
@@ -250,6 +252,7 @@ def dashboard():
             "consultations": consult_count
         },
         "vitals": vitals,
+        "latest_consultation": dict(latest_consult) if latest_consult else None,
         "upcoming_appointments": [dict(row) for row in upcoming],
         "recent_records": [dict(row) for row in records],
         "recent_prescriptions": [

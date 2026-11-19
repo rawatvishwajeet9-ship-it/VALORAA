@@ -31,6 +31,16 @@
       color: #ffffff;
       border-color: #0d9488;
     }
+
+    .time-slot-pill.booked {
+      background: #1e293b !important;
+      color: #94a3b8 !important;
+      border-color: #0f172a !important;
+      cursor: not-allowed !important;
+      pointer-events: none !important;
+      text-decoration: line-through !important;
+      opacity: 0.7 !important;
+    }
   </style>
 </head>
 
@@ -306,18 +316,18 @@
           <div class="form-group">
             <label class="form-label" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">SELECT TIME
               SLOT *</label>
-            <input type="hidden" id="book-time-slot" value="10:30 AM">
+            <input type="hidden" id="book-time-slot" value="">
             <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:8px;">
-              <div class="time-slot-pill" onclick="selectTimeSlot(this, '09:00 AM')">09:00 AM</div>
-              <div class="time-slot-pill" onclick="selectTimeSlot(this, '09:45 AM')">09:45 AM</div>
-              <div class="time-slot-pill active" onclick="selectTimeSlot(this, '10:30 AM')">10:30 AM</div>
-              <div class="time-slot-pill" onclick="selectTimeSlot(this, '11:15 AM')">11:15 AM</div>
-              <div class="time-slot-pill" onclick="selectTimeSlot(this, '12:00 PM')">12:00 PM</div>
-              <div class="time-slot-pill" onclick="selectTimeSlot(this, '02:00 PM')">02:00 PM</div>
-              <div class="time-slot-pill" onclick="selectTimeSlot(this, '02:45 PM')">02:45 PM</div>
-              <div class="time-slot-pill" onclick="selectTimeSlot(this, '03:30 PM')">03:30 PM</div>
-              <div class="time-slot-pill" onclick="selectTimeSlot(this, '04:15 PM')">04:15 PM</div>
-              <div class="time-slot-pill" onclick="selectTimeSlot(this, '05:00 PM')">05:00 PM</div>
+              <div class="time-slot-pill" data-slot="09:00 AM" onclick="selectTimeSlot(this, '09:00 AM')">09:00 AM</div>
+              <div class="time-slot-pill" data-slot="09:45 AM" onclick="selectTimeSlot(this, '09:45 AM')">09:45 AM</div>
+              <div class="time-slot-pill" data-slot="10:30 AM" onclick="selectTimeSlot(this, '10:30 AM')">10:30 AM</div>
+              <div class="time-slot-pill" data-slot="11:15 AM" onclick="selectTimeSlot(this, '11:15 AM')">11:15 AM</div>
+              <div class="time-slot-pill" data-slot="12:00 PM" onclick="selectTimeSlot(this, '12:00 PM')">12:00 PM</div>
+              <div class="time-slot-pill" data-slot="02:00 PM" onclick="selectTimeSlot(this, '02:00 PM')">02:00 PM</div>
+              <div class="time-slot-pill" data-slot="02:45 PM" onclick="selectTimeSlot(this, '02:45 PM')">02:45 PM</div>
+              <div class="time-slot-pill" data-slot="03:30 PM" onclick="selectTimeSlot(this, '03:30 PM')">03:30 PM</div>
+              <div class="time-slot-pill" data-slot="04:15 PM" onclick="selectTimeSlot(this, '04:15 PM')">04:15 PM</div>
+              <div class="time-slot-pill" data-slot="05:00 PM" onclick="selectTimeSlot(this, '05:00 PM')">05:00 PM</div>
             </div>
           </div>
 
@@ -353,12 +363,6 @@
       document.getElementById('book-date').min = todayStr;
       document.getElementById('book-date').value = todayStr;
     });
-
-    function selectTimeSlot(pillEl, slot) {
-      document.querySelectorAll('.time-slot-pill').forEach(p => p.classList.remove('active'));
-      pillEl.classList.add('active');
-      document.getElementById('book-time-slot').value = slot;
-    }
   </script>
 </body>
 

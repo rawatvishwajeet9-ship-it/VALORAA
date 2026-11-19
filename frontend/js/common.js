@@ -190,10 +190,15 @@ window.triggerAvatarUpload = triggerAvatarUpload;
 function updateSelectedFileName(input) {
   const display = document.getElementById('selected-file-display') || (input.parentElement && input.parentElement.querySelector('#selected-file-display'));
   if (!display) return;
-  if (input.files && input.files[0]) {
-    const f = input.files[0];
-    const sizeMb = (f.size / (1024 * 1024)).toFixed(2);
-    display.innerHTML = `<span style="color:#0d9488;font-weight:700;">Selected:</span> ${escapeHtml(f.name)} (${sizeMb} MB)`;
+  if (input.files && input.files.length > 0) {
+    if (input.files.length === 1) {
+      const f = input.files[0];
+      const sizeMb = (f.size / (1024 * 1024)).toFixed(2);
+      display.innerHTML = `<span style="color:#0d9488;font-weight:700;">Selected:</span> ${escapeHtml(f.name)} (${sizeMb} MB)`;
+    } else {
+      const names = Array.from(input.files).map(f => escapeHtml(f.name)).join(', ');
+      display.innerHTML = `<span style="color:#0d9488;font-weight:700;">Selected ${input.files.length} reports / images:</span> ${names}`;
+    }
   } else {
     display.textContent = '';
   }
@@ -221,7 +226,10 @@ async function handlePatientUploadRecord(e) {
   formData.append('tags', tags);
   formData.append('description', desc);
 
-  if (fileInput && fileInput.files && fileInput.files[0]) {
+  if (fileInput && fileInput.files && fileInput.files.length > 0) {
+    for (let i = 0; i < fileInput.files.length; i++) {
+      formData.append('files', fileInput.files[i]);
+    }
     formData.append('file', fileInput.files[0]);
   }
 
@@ -229,7 +237,7 @@ async function handlePatientUploadRecord(e) {
     showToast('Securing document in encrypted vault...', 'info');
     const res = await api.post('/records', formData);
     if (res.success) {
-      showToast('Medical record stored securely in vault!', 'success');
+      showToast(res.message || 'Medical record stored securely in vault!', 'success');
       closeModal('modal-upload-record');
       
       const form = document.getElementById('upload-record-form');
@@ -273,7 +281,10 @@ async function handleDoctorUploadRecord(e) {
   formData.append('tags', tags);
   formData.append('description', desc);
 
-  if (fileInput && fileInput.files && fileInput.files[0]) {
+  if (fileInput && fileInput.files && fileInput.files.length > 0) {
+    for (let i = 0; i < fileInput.files.length; i++) {
+      formData.append('files', fileInput.files[i]);
+    }
     formData.append('file', fileInput.files[0]);
   }
 
@@ -281,7 +292,7 @@ async function handleDoctorUploadRecord(e) {
     showToast('Uploading clinical document to patient vault...', 'info');
     const res = await api.post('/records', formData);
     if (res.success) {
-      showToast('Document uploaded successfully to patient vault!', 'success');
+      showToast(res.message || 'Document uploaded successfully to patient vault!', 'success');
       closeModal('modal-upload-record');
       const form = document.getElementById('upload-record-form');
       if (form) form.reset();

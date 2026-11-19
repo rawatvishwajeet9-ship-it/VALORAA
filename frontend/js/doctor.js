@@ -967,8 +967,13 @@ window.openDoctorUploadModal = openDoctorUploadModal;
 function updateSelectedFileName(input) {
   const display = document.getElementById('selected-file-display');
   if (!display) return;
-  if (input.files && input.files[0]) {
-    display.textContent = `Selected: ${input.files[0].name} (${(input.files[0].size/1024).toFixed(1)} KB)`;
+  if (input.files && input.files.length > 0) {
+    if (input.files.length === 1) {
+      display.textContent = `Selected: ${input.files[0].name} (${(input.files[0].size/1024).toFixed(1)} KB)`;
+    } else {
+      const names = Array.from(input.files).map(f => f.name).join(', ');
+      display.textContent = `Selected ${input.files.length} reports/images: ${names}`;
+    }
   } else {
     display.textContent = '';
   }
@@ -999,16 +1004,19 @@ async function handleDoctorUploadRecord(e) {
   formData.append('description', description);
   formData.append('tags', tags);
 
-  if (fileInput && fileInput.files && fileInput.files[0]) {
+  if (fileInput && fileInput.files && fileInput.files.length > 0) {
+    for (let i = 0; i < fileInput.files.length; i++) {
+      formData.append('files', fileInput.files[i]);
+    }
     formData.append('file', fileInput.files[0]);
   }
 
   try {
-    showToast('Encrypting and securing report in vault...', 'info');
+    showToast('Encrypting and securing reports in vault...', 'info');
     const res = await api.upload('/records', formData);
     if (res.success) {
       closeModal('modal-upload-record');
-      showToast('Diagnostic report successfully uploaded and secured in patient vault!', 'success');
+      showToast(res.message || 'Diagnostic reports successfully uploaded and secured in patient vault!', 'success');
       const form = document.getElementById('upload-record-form');
       if (form) form.reset();
       const display = document.getElementById('selected-file-display');

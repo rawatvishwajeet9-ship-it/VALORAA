@@ -1,3 +1,4 @@
+import os
 import re
 import json
 from flask import Blueprint, request, jsonify
@@ -301,11 +302,32 @@ def history():
             item["prescription"] = None
         parsed_consultations.append(item)
 
+    # Diagnostic Reports & Medical Scans (Images, X-Rays, Lab Reports) for this patient
+    records_rows = conn.execute("""
+        SELECT r.*, u.name as uploader_name, u.role as uploader_role
+        FROM medical_records r
+        JOIN users u ON r.uploaded_by = u.id
+        WHERE r.patient_id = ?
+        ORDER BY r.record_date DESC, r.created_at DESC
+    """, (patient_id,)).fetchall()
+
+    parsed_records = []
+    for r in records_rows:
+        rec = dict(r)
+        rec["tags"] = json.loads(r["tags"] or "[]")
+        rec["facility_name"] = r["facility_or_doctor"] or "VALORA Health Diagnostics"
+        file_url = r["file_url"] or ""
+        rec["file_name"] = os.path.basename(file_url) if file_url else "report.pdf"
+        file_ext = (file_url.rsplit(".", 1)[-1].lower() if "." in file_url else "")
+        rec["is_image"] = file_ext in ["png", "jpg", "jpeg", "webp", "gif", "svg"]
+        parsed_records.append(rec)
+
     conn.close()
 
     return jsonify({
         "success": True,
-        "timeline": parsed_consultations
+        "timeline": parsed_consultations,
+        "reports": parsed_records
     })
 
 @patient_bp.route("/<int:patient_id>/vitals", methods=["GET"])

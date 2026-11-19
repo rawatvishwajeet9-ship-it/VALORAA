@@ -158,7 +158,9 @@ async function loadPatientAppointments(statusFilter = '') {
       return;
     }
 
+    window.patientApptsMap = {};
     container.innerHTML = res.appointments.map(a => {
+      window.patientApptsMap[a.id] = a;
       const d = new Date(a.appointment_date);
       const monthStr = isNaN(d.getTime()) ? 'DATE' : d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
       const dayNum = isNaN(d.getTime()) ? '--' : d.getDate();
@@ -197,11 +199,11 @@ async function loadPatientAppointments(statusFilter = '') {
                     <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                     Rated ${a.review.rating}/5
                   </span>
-                  <button class="btn btn-sm" style="background:#f8fafc;color:#475569;border:1px solid #cbd5e1;padding:5px 9px;border-radius:6px;font-size:0.75rem;font-weight:600;" onclick="openReviewModal(${a.id}, ${a.doctor_id}, '${escapeHtml(a.doctor_name)}', ${a.review.rating}, '${escapeHtml(a.review.comment || '')}')">
+                  <button type="button" class="btn btn-sm" style="background:#f8fafc;color:#475569;border:1px solid #cbd5e1;padding:5px 9px;border-radius:6px;font-size:0.75rem;font-weight:600;" onclick="triggerReviewModal(${a.id})">
                     Edit Review
                   </button>
                 ` : `
-                  <button class="btn btn-sm" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-weight:700;padding:6px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,0.04);" onclick="openReviewModal(${a.id}, ${a.doctor_id}, '${escapeHtml(a.doctor_name)}')">
+                  <button type="button" class="btn btn-sm" style="background:#fef3c7;color:#b45309;border:1px solid #fde68a;font-weight:700;padding:6px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,0.04);" onclick="triggerReviewModal(${a.id})">
                     <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                     Rate Doctor
                   </button>
@@ -239,14 +241,28 @@ async function cancelAppointment(apptId) {
 }
 
 // Rate & Review Doctor Handlers (Patient only for completed appointments)
+function triggerReviewModal(apptId) {
+  const a = (window.patientApptsMap && window.patientApptsMap[apptId]) ? window.patientApptsMap[apptId] : null;
+  if (!a) {
+    showToast('Appointment record not found.', 'error');
+    return;
+  }
+  const currentRating = (a.review && a.review.rating) ? a.review.rating : 5;
+  const currentComment = (a.review && a.review.comment) ? a.review.comment : '';
+  openReviewModal(a.id, a.doctor_id, a.doctor_name, currentRating, currentComment);
+}
+window.triggerReviewModal = triggerReviewModal;
+
 function openReviewModal(appointmentId, doctorId, doctorName, currentRating = 5, currentComment = '') {
   const modal = document.getElementById('modal-review-doctor');
   if (!modal) return;
 
-  document.getElementById('review-appointment-id').value = appointmentId;
+  const apptInput = document.getElementById('review-appointment-id');
+  if (apptInput) apptInput.value = appointmentId;
+
   const subtitle = document.getElementById('review-modal-subtitle');
   if (subtitle) {
-    subtitle.textContent = `Consultation with Dr. ${doctorName} (Completed)`;
+    subtitle.textContent = `Consultation with Dr. ${doctorName || 'Physician'} (Completed)`;
   }
 
   setRatingStars(currentRating);
@@ -255,13 +271,19 @@ function openReviewModal(appointmentId, doctorId, doctorName, currentRating = 5,
     commentInput.value = currentComment || '';
   }
 
+  modal.classList.add('active');
   modal.style.display = 'flex';
+  modal.style.visibility = 'visible';
+  modal.style.opacity = '1';
 }
 window.openReviewModal = openReviewModal;
 
 function closeReviewModal() {
   const modal = document.getElementById('modal-review-doctor');
-  if (modal) modal.style.display = 'none';
+  if (modal) {
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+  }
 }
 window.closeReviewModal = closeReviewModal;
 
@@ -905,7 +927,7 @@ async function loadPatientPrescriptions() {
   }
 }
 
-// Load Patient Medical History
+// Load Patient Medical History (Consultations + Diagnostic Reports/Images)
 async function loadMedicalHistory() {
   const container = document.getElementById('history-timeline-container');
   if (!container) return;
@@ -913,104 +935,220 @@ async function loadMedicalHistory() {
   try {
     const res = await api.get('/patient/history');
     const timeline = res.timeline || [];
+    const reports = res.reports || [];
 
-    if (timeline.length === 0) {
+    if (timeline.length === 0 && reports.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">
             <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </div>
-          <h3>No Consultation Records Found</h3>
-          <p>You have not had any medical consultations logged in the system yet. Once you complete a visit with a doctor, the complete diagnostic history will appear here.</p>
+          <h3>No Medical History or Reports Found</h3>
+          <p>You have not had any medical consultations or diagnostic reports uploaded yet. Once a doctor completes a visit or uploads clinical test reports/scans, they will immediately appear here.</p>
         </div>
       `;
       return;
     }
 
-    container.innerHTML = `
-      <div style="position:relative;padding-left:32px;border-left:2px solid #ccfbf1;margin-left:12px;">
-        ${timeline.map(item => {
-          const dateStr = formatDate(item.consultation_date);
-          const symptoms = item.symptoms || [];
-          const rx = item.prescription;
+    let html = '';
 
-          return `
-            <div style="position:relative;margin-bottom:32px;">
-              <!-- Timeline node circle -->
-              <div style="position:absolute;left:-41px;top:0;width:18px;height:18px;border-radius:50%;background:#0d9488;border:3px solid #ffffff;box-shadow:0 0 0 2px #0d9488;"></div>
-              
-              <div class="card" style="box-shadow:var(--shadow-sm);border:1px solid #e2e8f0;border-radius:var(--radius-lg);padding:24px;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;border-bottom:1px solid #f1f5f9;padding-bottom:12px;">
-                  <div>
-                    <span style="font-size:0.8rem;color:#0d9488;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Consultation Record</span>
-                    <h4 style="font-size:1.15rem;font-weight:700;color:var(--text-main);margin:4px 0;">Diagnosis: ${escapeHtml(item.diagnosis || 'General Checkup')}</h4>
-                    <div style="font-size:0.85rem;color:var(--text-muted);">
-                      Attending Physician: <strong>Dr. ${escapeHtml(item.doctor_name || 'Practitioner')}</strong> (${escapeHtml(item.specialty || 'General')})
-                    </div>
-                  </div>
-                  <div style="text-align:right;">
-                    <span class="badge" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">${dateStr}</span>
-                  </div>
-                </div>
-
-                <!-- Symptoms -->
-                ${symptoms.length > 0 ? `
-                  <div style="margin-bottom:14px;">
-                    <strong style="font-size:0.82rem;color:var(--text-muted);display:block;margin-bottom:6px;">Reported Symptoms:</strong>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;">
-                      ${symptoms.map(s => `<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;">${escapeHtml(s)}</span>`).join('')}
-                    </div>
-                  </div>
-                ` : ''}
-
-                <!-- Recorded Vitals Box -->
-                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:12px;margin-bottom:16px;">
-                  <div>
-                    <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">Blood Pressure</span>
-                    <strong style="font-size:0.95rem;color:var(--text-main);">${escapeHtml(item.blood_pressure || 'N/A')}</strong>
-                  </div>
-                  <div>
-                    <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">Heart Rate</span>
-                    <strong style="font-size:0.95rem;color:var(--text-main);">${item.heart_rate ? item.heart_rate + ' bpm' : 'N/A'}</strong>
-                  </div>
-                  <div>
-                    <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">Temperature</span>
-                    <strong style="font-size:0.95rem;color:var(--text-main);">${item.temperature_f ? item.temperature_f + ' °F' : 'N/A'}</strong>
-                  </div>
-                  <div>
-                    <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">SpO2 Oxygen</span>
-                    <strong style="font-size:0.95rem;color:var(--text-main);">${item.oxygen_saturation ? item.oxygen_saturation + ' %' : 'N/A'}</strong>
-                  </div>
-                </div>
-
-                <!-- Clinical Notes -->
-                ${item.notes ? `
-                  <div style="margin-bottom:14px;">
-                    <strong style="font-size:0.82rem;color:var(--text-muted);display:block;margin-bottom:4px;">Doctor's Clinical Notes:</strong>
-                    <p style="margin:0;font-size:0.88rem;color:#334155;line-height:1.5;">${escapeHtml(item.notes)}</p>
-                  </div>
-                ` : ''}
-
-                <!-- Prescriptions issued in this visit -->
-                ${rx && rx.medications && rx.medications.length > 0 ? `
-                  <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:12px 16px;margin-top:12px;">
-                    <div style="font-size:0.82rem;font-weight:700;color:#0d9488;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-                      <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
-                      Attached Prescription (${rx.medications.length} items)
-                    </div>
-                    <ul style="margin:0;padding-left:18px;font-size:0.82rem;color:#065f46;">
-                      ${rx.medications.map(m => `<li><strong>${escapeHtml(m.name || m.drug_name)}</strong> – ${escapeHtml(m.dosage || '')} (${escapeHtml(m.frequency || '')})</li>`).join('')}
-                    </ul>
-                  </div>
-                ` : ''}
+    // 1. Diagnostic Reports & Clinical Imaging Section
+    if (reports.length > 0) {
+      html += `
+        <div style="margin-bottom:36px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <h3 style="font-size:1.25rem;font-weight:800;color:#0f172a;margin:0;">Clinical Diagnostic Reports &amp; Imaging</h3>
+                <span class="badge" style="background:#e6f7f5;color:#0d9488;border:1px solid #99f6e4;font-size:0.75rem;padding:3px 10px;font-weight:700;">
+                  ${reports.length} Verified Document${reports.length > 1 ? 's' : ''}
+                </span>
               </div>
+              <p style="font-size:0.82rem;color:#64748b;margin:3px 0 0;">Radiology scans, laboratory investigations, pathology results, and diagnostic imaging uploaded by attending doctors</p>
             </div>
-          `;
-        }).join('')}
-      </div>
-    `;
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;">
+            ${reports.map(r => {
+              const ext = (r.file_url || '').split('.').pop().toUpperCase();
+              return `
+                <div class="card" style="margin-bottom:0;border:1px solid #e2e8f0;border-radius:14px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                  <div>
+                    ${r.is_image ? `
+                      <div style="position:relative;width:100%;height:165px;border-radius:10px;overflow:hidden;background:#f8fafc;margin-bottom:12px;border:1px solid #f1f5f9;cursor:pointer;" onclick="openImageModal('${r.file_url}', '${escapeHtml(r.title)}')">
+                        <img src="${r.file_url}" alt="${escapeHtml(r.title)}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.2s ease;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                        <span style="position:absolute;top:8px;right:8px;background:rgba(15,23,42,0.75);color:#ffffff;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:6px;backdrop-filter:blur(4px);">
+                          ${ext || 'IMAGE'}
+                        </span>
+                      </div>
+                    ` : `
+                      <div style="width:100%;height:100px;border-radius:10px;background:#f8fafc;margin-bottom:12px;border:1px solid #f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#0d9488;">
+                        <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span style="font-size:0.75rem;font-weight:700;margin-top:4px;color:#475569;">${ext} Document</span>
+                      </div>
+                    `}
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                      <span class="badge" style="background:#f0fdfa;color:#0d9488;border:1px solid #ccfbf1;font-size:0.72rem;font-weight:700;padding:2px 8px;">
+                        ${escapeHtml(r.record_type ? r.record_type.replace(/_/g, ' ').toUpperCase() : 'REPORT')}
+                      </span>
+                      <span style="font-size:0.75rem;color:#94a3b8;font-weight:600;">
+                        ${formatDate(r.record_date || r.created_at)}
+                      </span>
+                    </div>
+
+                    <h4 style="font-size:1rem;font-weight:800;color:#0f172a;margin:4px 0 6px 0;line-height:1.3;">
+                      ${escapeHtml(r.title)}
+                    </h4>
+
+                    <div style="font-size:0.8rem;color:#64748b;margin-bottom:8px;">
+                      Uploaded by: <strong style="color:#334155;">${escapeHtml(r.uploader_name || r.facility_name)}</strong>
+                    </div>
+
+                    ${r.description ? `
+                      <p style="font-size:0.78rem;color:#475569;background:#f8fafc;padding:8px 10px;border-radius:6px;border:1px solid #f1f5f9;margin:0 0 10px 0;line-height:1.4;">
+                        ${escapeHtml(r.description)}
+                      </p>
+                    ` : ''}
+
+                    ${r.tags && r.tags.length > 0 ? `
+                      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
+                        ${r.tags.map(t => `<span style="font-size:0.68rem;background:#f1f5f9;color:#475569;padding:2px 6px;border-radius:4px;">#${escapeHtml(t)}</span>`).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;">
+                    <a href="${r.file_url}" target="_blank" class="btn btn-outline btn-sm" style="flex:1;text-align:center;font-size:0.78rem;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:4px;">
+                      <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                      Inspect Report
+                    </a>
+                    <a href="${r.file_url}" download class="btn btn-secondary btn-sm" style="font-size:0.78rem;text-decoration:none;padding:6px 10px;" title="Download File">
+                      <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </a>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 2. Chronological Consultation Timeline Section
+    if (timeline.length > 0) {
+      html += `
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+            <h3 style="font-size:1.25rem;font-weight:800;color:#0f172a;margin:0;">Physician Consultation Timeline</h3>
+            <span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;font-size:0.75rem;padding:3px 10px;font-weight:700;">
+              ${timeline.length} Visit${timeline.length > 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div style="position:relative;padding-left:32px;border-left:2px solid #ccfbf1;margin-left:12px;">
+            ${timeline.map(item => {
+              const dateStr = formatDate(item.consultation_date);
+              const symptoms = item.symptoms || [];
+              const rx = item.prescription;
+
+              return `
+                <div style="position:relative;margin-bottom:32px;">
+                  <!-- Timeline node circle -->
+                  <div style="position:absolute;left:-41px;top:0;width:18px;height:18px;border-radius:50%;background:#0d9488;border:3px solid #ffffff;box-shadow:0 0 0 2px #0d9488;"></div>
+                  
+                  <div class="card" style="box-shadow:var(--shadow-sm);border:1px solid #e2e8f0;border-radius:var(--radius-lg);padding:24px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:14px;border-bottom:1px solid #f1f5f9;padding-bottom:12px;">
+                      <div>
+                        <span style="font-size:0.8rem;color:#0d9488;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Consultation Record</span>
+                        <h4 style="font-size:1.15rem;font-weight:700;color:var(--text-main);margin:4px 0;">Diagnosis: ${escapeHtml(item.diagnosis || 'General Checkup')}</h4>
+                        <div style="font-size:0.85rem;color:var(--text-muted);">
+                          Attending Physician: <strong>Dr. ${escapeHtml(item.doctor_name || 'Practitioner')}</strong> (${escapeHtml(item.specialty || 'General')})
+                        </div>
+                      </div>
+                      <div style="text-align:right;">
+                        <span class="badge" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">${dateStr}</span>
+                      </div>
+                    </div>
+
+                    <!-- Symptoms -->
+                    ${symptoms.length > 0 ? `
+                      <div style="margin-bottom:14px;">
+                        <strong style="font-size:0.82rem;color:var(--text-muted);display:block;margin-bottom:6px;">Reported Symptoms:</strong>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                          ${symptoms.map(s => `<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;">${escapeHtml(s)}</span>`).join('')}
+                        </div>
+                      </div>
+                    ` : ''}
+
+                    <!-- Recorded Vitals Box -->
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:12px;margin-bottom:16px;">
+                      <div>
+                        <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">Blood Pressure</span>
+                        <strong style="font-size:0.95rem;color:var(--text-main);">${escapeHtml(item.blood_pressure || 'N/A')}</strong>
+                      </div>
+                      <div>
+                        <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">Heart Rate</span>
+                        <strong style="font-size:0.95rem;color:var(--text-main);">${item.heart_rate ? item.heart_rate + ' bpm' : 'N/A'}</strong>
+                      </div>
+                      <div>
+                        <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">Temperature</span>
+                        <strong style="font-size:0.95rem;color:var(--text-main);">${item.temperature_f ? item.temperature_f + ' °F' : 'N/A'}</strong>
+                      </div>
+                      <div>
+                        <span style="font-size:0.72rem;color:#64748b;text-transform:uppercase;font-weight:600;display:block;">SpO2 Oxygen</span>
+                        <strong style="font-size:0.95rem;color:var(--text-main);">${item.oxygen_saturation ? item.oxygen_saturation + ' %' : 'N/A'}</strong>
+                      </div>
+                    </div>
+
+                    <!-- Clinical Notes -->
+                    ${item.notes ? `
+                      <div style="margin-bottom:14px;">
+                        <strong style="font-size:0.82rem;color:var(--text-muted);display:block;margin-bottom:4px;">Doctor's Clinical Notes:</strong>
+                        <p style="margin:0;font-size:0.88rem;color:#334155;line-height:1.5;">${escapeHtml(item.notes)}</p>
+                      </div>
+                    ` : ''}
+
+                    <!-- Prescriptions issued in this visit -->
+                    ${rx && rx.medications && rx.medications.length > 0 ? `
+                      <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:8px;padding:12px 16px;margin-top:12px;">
+                        <div style="font-size:0.82rem;font-weight:700;color:#0d9488;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+                          <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+                          Attached Prescription (${rx.medications.length} items)
+                        </div>
+                        <ul style="margin:0;padding-left:18px;font-size:0.82rem;color:#065f46;">
+                          ${rx.medications.map(m => `<li><strong>${escapeHtml(m.name || m.drug_name)}</strong> – ${escapeHtml(m.dosage || '')} (${escapeHtml(m.frequency || '')})</li>`).join('')}
+                        </ul>
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
 
   } catch (error) {
     container.innerHTML = `<div class="empty-state"><h3>Error Loading Medical History</h3><p>${escapeHtml(error.message)}</p></div>`;
   }
 }
+window.loadMedicalHistory = loadMedicalHistory;
+
+function openImageModal(src, title) {
+  const modal = document.getElementById('modal-image-preview');
+  const img = document.getElementById('preview-image-img');
+  const titleEl = document.getElementById('preview-image-title');
+  const openTab = document.getElementById('preview-image-open-tab');
+  if (img) img.src = src;
+  if (titleEl) titleEl.textContent = title || 'Medical Diagnostic Scan';
+  if (openTab) openTab.href = src;
+  if (modal) {
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+  }
+}
+window.openImageModal = openImageModal;

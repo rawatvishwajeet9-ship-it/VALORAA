@@ -230,43 +230,44 @@
   </div>
 
   <!-- Modal: Rate & Review Doctor -->
-  <div class="modal-overlay" id="modal-review-doctor" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-    <div style="background:#ffffff;border-radius:16px;max-width:480px;width:92%;padding:28px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);position:relative;">
-      <button onclick="closeReviewModal()" style="position:absolute;top:20px;right:20px;background:none;border:none;cursor:pointer;color:#94a3b8;font-size:1.4rem;line-height:1;">&times;</button>
-      
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-        <div style="width:40px;height:40px;border-radius:10px;background:#fef3c7;color:#d97706;display:flex;align-items:center;justify-content:center;">
-          <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+  <div class="modal-overlay" id="modal-review-doctor">
+    <div class="modal-container" style="max-width:500px;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:38px;height:38px;border-radius:10px;background:#fef3c7;color:#d97706;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <div>
+            <h3 class="modal-title" style="margin:0;font-size:1.15rem;font-weight:800;color:#0f172a;">Rate Your Consultation</h3>
+            <p style="font-size:0.8rem;color:#64748b;margin:2px 0 0;" id="review-modal-subtitle">Review consultation with physician</p>
+          </div>
         </div>
-        <div>
-          <h3 style="font-size:1.15rem;font-weight:800;color:#0f172a;margin:0;">Rate Your Consultation</h3>
-          <p style="font-size:0.8rem;color:#64748b;margin:2px 0 0;" id="review-modal-subtitle">Review consultation with physician</p>
-        </div>
+        <button class="modal-close" type="button" onclick="closeReviewModal()">&times;</button>
       </div>
 
-      <form id="form-submit-review" onsubmit="handleReviewSubmit(event)">
+      <form id="form-submit-review" onsubmit="handleReviewSubmit(event)" class="modal-body" style="padding:22px;">
         <input type="hidden" id="review-appointment-id" value="">
         <input type="hidden" id="review-rating-value" value="5">
 
         <div class="form-group" style="margin-bottom:18px;">
           <label class="form-label" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;margin-bottom:8px;display:block;">Select Rating *</label>
-          <div style="display:flex;align-items:center;gap:8px;" id="star-rating-container">
-            <button type="button" class="star-rating-btn" data-value="1" onclick="setRatingStars(1)" style="background:none;border:none;cursor:pointer;padding:4px;">
-              <svg class="svg-icon" viewBox="0 0 24 24" style="width:28px;height:28px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <div style="display:flex;align-items:center;gap:6px;" id="star-rating-container">
+            <button type="button" class="star-rating-btn" data-value="1" onclick="setRatingStars(1)" style="background:none;border:none;cursor:pointer;padding:4px;" title="1 Star">
+              <svg class="svg-icon" viewBox="0 0 24 24" style="width:30px;height:30px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </button>
-            <button type="button" class="star-rating-btn" data-value="2" onclick="setRatingStars(2)" style="background:none;border:none;cursor:pointer;padding:4px;">
-              <svg class="svg-icon" viewBox="0 0 24 24" style="width:28px;height:28px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <button type="button" class="star-rating-btn" data-value="2" onclick="setRatingStars(2)" style="background:none;border:none;cursor:pointer;padding:4px;" title="2 Stars">
+              <svg class="svg-icon" viewBox="0 0 24 24" style="width:30px;height:30px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </button>
-            <button type="button" class="star-rating-btn" data-value="3" onclick="setRatingStars(3)" style="background:none;border:none;cursor:pointer;padding:4px;">
-              <svg class="svg-icon" viewBox="0 0 24 24" style="width:28px;height:28px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <button type="button" class="star-rating-btn" data-value="3" onclick="setRatingStars(3)" style="background:none;border:none;cursor:pointer;padding:4px;" title="3 Stars">
+              <svg class="svg-icon" viewBox="0 0 24 24" style="width:30px;height:30px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </button>
-            <button type="button" class="star-rating-btn" data-value="4" onclick="setRatingStars(4)" style="background:none;border:none;cursor:pointer;padding:4px;">
-              <svg class="svg-icon" viewBox="0 0 24 24" style="width:28px;height:28px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <button type="button" class="star-rating-btn" data-value="4" onclick="setRatingStars(4)" style="background:none;border:none;cursor:pointer;padding:4px;" title="4 Stars">
+              <svg class="svg-icon" viewBox="0 0 24 24" style="width:30px;height:30px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </button>
-            <button type="button" class="star-rating-btn" data-value="5" onclick="setRatingStars(5)" style="background:none;border:none;cursor:pointer;padding:4px;">
-              <svg class="svg-icon" viewBox="0 0 24 24" style="width:28px;height:28px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <button type="button" class="star-rating-btn" data-value="5" onclick="setRatingStars(5)" style="background:none;border:none;cursor:pointer;padding:4px;" title="5 Stars">
+              <svg class="svg-icon" viewBox="0 0 24 24" style="width:30px;height:30px;" fill="#f59e0b" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </button>
-            <span id="rating-text-label" style="font-size:0.85rem;font-weight:700;color:#b45309;margin-left:6px;">5.0 Stars (Excellent)</span>
+            <span id="rating-text-label" style="font-size:0.85rem;font-weight:700;color:#b45309;margin-left:8px;">5.0 Stars (Excellent)</span>
           </div>
         </div>
 
@@ -275,7 +276,7 @@
           <textarea id="review-comment-input" class="form-control" rows="4" style="resize:vertical;font-size:0.88rem;" placeholder="Share your experience with the doctor's communication, diagnosis accuracy, treatment plan, and clinic care..."></textarea>
         </div>
 
-        <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <div class="modal-footer" style="padding:14px 0 0;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #f1f5f9;">
           <button type="button" class="btn btn-outline" onclick="closeReviewModal()">Cancel</button>
           <button type="submit" class="btn btn-primary" id="btn-submit-review">Submit Review</button>
         </div>

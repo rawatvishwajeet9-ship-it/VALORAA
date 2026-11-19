@@ -114,65 +114,121 @@ def records():
             conn.close()
             return jsonify({"success": False, "message": "Record title is required."}), 400
 
-        file = request.files.get("file")
-        file_url = ""
-        file_type = "application/pdf"
-        file_size = 0
+        # Support multiple file uploads (files / file)
+        upload_files = request.files.getlist("files") or request.files.getlist("file")
+        valid_files = [f for f in upload_files if f and f.filename]
+        if not valid_files and request.files.get("file"):
+            f = request.files.get("file")
+            if f and f.filename:
+                valid_files = [f]
 
-        if file and file.filename:
-            if not allowed_file(file.filename):
-                conn.close()
-                return jsonify({"success": False, "message": f"Unsupported file format. Allowed: {', '.join(sorted(Config.ALLOWED_EXTENSIONS))}"}), 400
-
-            ext = file.filename.rsplit(".", 1)[1].lower()
-            safe_name = f"{uuid.uuid4().hex[:12]}_{secure_filename(file.filename)}"
-            save_path = Config.UPLOAD_FOLDER / safe_name
-            Config.UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
-            file.save(str(save_path))
-
-            file_url = f"/uploads/{safe_name}"
-            file_type = file.mimetype or f"application/{ext}"
-            file_size = os.path.getsize(save_path)
-        else:
-            # Check if file_url was supplied directly
-            file_url = request.form.get("file_url") or "/uploads/sample_medical_doc.pdf"
-            file_type = "application/pdf"
-            file_size = 500000
+        Config.UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+        created_records = []
 
         try:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO medical_records (
-                    patient_id, uploaded_by, record_type, title, description,
-                    file_url, file_type, file_size, facility_or_doctor, tags
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                target_patient_id,
-                user["id"],
-                record_type,
-                title,
-                description,
-                file_url,
-                file_type,
-                file_size,
-                facility,
-                json.dumps(tags)
-            ))
-            record_id = cursor.lastrowid
 
-            cursor.execute("""
-                INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
-                VALUES (?, ?, ?, ?, ?)
-            """, (user["id"], "MEDICAL_RECORD_UPLOADED", "MedicalRecord", str(record_id), json.dumps({"title": title, "type": record_type})))
+            if valid_files:
+                # Pre-validate all files before saving
+                for f in valid_files:
+                    if not allowed_file(f.filename):
+                        conn.close()
+                        return jsonify({
+                            "success": False, 
+                            "message": f"Unsupported file format for '{f.filename}'. Allowed: {', '.join(sorted(Config.ALLOWED_EXTENSIONS))}"
+                        }), 400
+
+                # Process and save each file
+                for idx, file in enumerate(valid_files):
+                    ext = file.filename.rsplit(".", 1)[1].lower()
+                    safe_name = f"{uuid.uuid4().hex[:12]}_{secure_filename(file.filename)}"
+                    save_path = Config.UPLOAD_FOLDER / safe_name
+                    file.save(str(save_path))
+
+                    file_url = f"/uploads/{safe_name}"
+                    file_type = file.mimetype or f"application/{ext}"
+                    file_size = os.path.getsize(save_path)
+
+                    # Compose distinct title if multiple files uploaded
+                    item_title = title if len(valid_files) == 1 else f"{title} (Report {idx + 1} - {file.filename})"
+
+                    cursor.execute("""
+                        INSERT INTO medical_records (
+                            patient_id, uploaded_by, record_type, title, description,
+                            file_url, file_type, file_size, facility_or_doctor, tags
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        target_patient_id,
+                        user["id"],
+                        record_type,
+                        item_title,
+                        description,
+                        file_url,
+                        file_type,
+                        file_size,
+                        facility,
+                        json.dumps(tags)
+                    ))
+                    rec_id = cursor.lastrowid
+                    cursor.execute("""
+                        INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (user["id"], "MEDICAL_RECORD_UPLOADED", "MedicalRecord", str(rec_id), json.dumps({"title": item_title, "type": record_type, "file": file.filename})))
+                    created_records.append({
+                        "id": rec_id,
+                        "title": item_title,
+                        "file_url": file_url,
+                        "file_size": file_size,
+                        "file_name": file.filename
+                    })
+            else:
+                # Fallback if file_url was supplied directly without binary file
+                file_url = request.form.get("file_url") or "/uploads/sample_medical_doc.pdf"
+                file_type = "application/pdf"
+                file_size = 500000
+
+                cursor.execute("""
+                    INSERT INTO medical_records (
+                        patient_id, uploaded_by, record_type, title, description,
+                        file_url, file_type, file_size, facility_or_doctor, tags
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    target_patient_id,
+                    user["id"],
+                    record_type,
+                    title,
+                    description,
+                    file_url,
+                    file_type,
+                    file_size,
+                    facility,
+                    json.dumps(tags)
+                ))
+                rec_id = cursor.lastrowid
+                cursor.execute("""
+                    INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (user["id"], "MEDICAL_RECORD_UPLOADED", "MedicalRecord", str(rec_id), json.dumps({"title": title, "type": record_type})))
+                created_records.append({
+                    "id": rec_id,
+                    "title": title,
+                    "file_url": file_url,
+                    "file_size": file_size,
+                    "file_name": "document.pdf"
+                })
 
             conn.commit()
             conn.close()
 
+            first_rec = created_records[0] if created_records else {}
+            msg = f"{len(created_records)} medical report(s) uploaded and saved to patient records successfully!"
             return jsonify({
                 "success": True,
-                "message": "Medical record uploaded and encrypted to patient vault successfully!",
-                "record_id": record_id,
-                "file_url": file_url
+                "message": msg,
+                "count": len(created_records),
+                "record_id": first_rec.get("id"),
+                "file_url": first_rec.get("file_url"),
+                "records": created_records
             }), 201
         except Exception as e:
             if conn:

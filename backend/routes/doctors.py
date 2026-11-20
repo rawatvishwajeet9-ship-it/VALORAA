@@ -17,7 +17,7 @@ def list_doctors():
         SELECT d.*, u.name, u.email, u.phone, u.avatar, u.status as user_status
         FROM doctors d
         JOIN users u ON d.user_id = u.id
-        WHERE u.status != 'suspended'
+        WHERE u.status = 'active' AND d.is_verified = 1
     """
     params = []
 

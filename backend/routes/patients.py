@@ -63,16 +63,23 @@ def profile():
                 conn.close()
                 return jsonify({"success": False, "message": "Emergency phone must be between 9 and 11 digits."}), 400
 
-        # Validate DOB (reject future dates or years outside 1900-2022)
+        # Validate DOB: must be between 1900 and today's current date (newborns born today allowed)
         dob = data.get("date_of_birth")
         if dob:
+            from datetime import date
             try:
-                parts = str(dob).replace("/", "-").split("-")
+                parts = str(dob).replace("/", "-").strip().split("-")
                 if len(parts) == 3:
-                    yr = int(parts[0]) if len(parts[0]) == 4 else int(parts[2])
-                    if yr > 2022 or yr < 1900:
+                    if len(parts[0]) == 4:
+                        dob_date = date(int(parts[0]), int(parts[1]), int(parts[2]))
+                    else:
+                        dob_date = date(int(parts[2]), int(parts[1]), int(parts[0]))
+                    if dob_date > date.today():
                         conn.close()
-                        return jsonify({"success": False, "message": "Year of birth must be between 1900 and 2022. Future dates not allowed."}), 400
+                        return jsonify({"success": False, "message": "Date of birth cannot be in the future (today's date allowed for newborns)."}), 400
+                    if dob_date.year < 1900:
+                        conn.close()
+                        return jsonify({"success": False, "message": "Year of birth must be 1900 or later."}), 400
             except (ValueError, IndexError):
                 pass
 

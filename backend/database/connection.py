@@ -32,9 +32,23 @@ def init_database(app=None):
     ensure_demo_accounts()
 
 def ensure_demo_accounts():
-    """Ensure verified demo accounts for Patient, Doctor, and Admin exist with realistic clinical data."""
+    """Ensure verified demo accounts exist initially. Never resurrect accounts deleted by admin."""
     conn = get_db()
     cursor = conn.cursor()
+
+    # If demo seeding has already run once or database has live users, never re-create deleted accounts
+    cursor.execute("CREATE TABLE IF NOT EXISTS system_config (key TEXT PRIMARY KEY, value TEXT)")
+    seeded = cursor.execute("SELECT value FROM system_config WHERE key = 'demo_seeded'").fetchone()
+    if seeded and seeded[0] == 'true':
+        conn.close()
+        return
+
+    existing_users = cursor.execute("SELECT COUNT(*) FROM users WHERE role != 'admin'").fetchone()[0]
+    if existing_users > 0:
+        cursor.execute("INSERT OR REPLACE INTO system_config (key, value) VALUES ('demo_seeded', 'true')")
+        conn.commit()
+        conn.close()
+        return
 
     # 1. Demo Doctor: dr harry
     cursor.execute("SELECT id FROM users WHERE email = 'doctor@valora.health'")
@@ -156,6 +170,7 @@ def ensure_demo_accounts():
             UPDATE doctors SET rating = 4.9, total_reviews = 1 WHERE user_id = ?
         """, (doc_id,))
 
+    cursor.execute("INSERT OR REPLACE INTO system_config (key, value) VALUES ('demo_seeded', 'true')")
     conn.commit()
     conn.close()
 

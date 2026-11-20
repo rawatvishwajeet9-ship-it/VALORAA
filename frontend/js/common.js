@@ -462,22 +462,30 @@ function bindWeightInputValidation(input) {
 }
 
 /**
- * Date of Birth Validation (1900-01-01 to 2022-12-31, No Future Dates)
+ * Date of Birth Validation (1900-01-01 to Today, Newborns Born Today Allowed)
  */
 function bindDateOfBirthValidation(input) {
   if (!input) return;
-  input.setAttribute('max', '2022-12-31');
+  const todayStr = new Date().toISOString().split('T')[0];
+  input.setAttribute('max', todayStr);
   input.setAttribute('min', '1900-01-01');
 
   const check = () => {
     if (!input.value) return true;
+    const currentToday = new Date().toISOString().split('T')[0];
+    if (input.value > currentToday) {
+      input.setCustomValidity('Date of birth cannot be in the future.');
+      input.style.borderColor = '#ef4444';
+      showToast('Date of birth cannot be in the future (up to today allowed for newborns).', 'error');
+      return false;
+    }
     const parts = input.value.split('-');
     if (parts.length === 3) {
       const year = parseInt(parts[0], 10);
-      if (year > 2022 || year < 1900) {
-        input.setCustomValidity('Year of birth must be between 1900 and 2022.');
+      if (year < 1900) {
+        input.setCustomValidity('Year of birth must be 1900 or later.');
         input.style.borderColor = '#ef4444';
-        showToast('Year of birth must be between 1900 and 2022 (future dates not allowed).', 'error');
+        showToast('Year of birth must be 1900 or later.', 'error');
         return false;
       }
     }

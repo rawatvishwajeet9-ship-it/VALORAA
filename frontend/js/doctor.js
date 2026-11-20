@@ -662,6 +662,8 @@ async function submitPrescription(e) {
     const instructions = row.querySelector('.med-inst')?.value.trim() || 'After meals';
 
     medications.push({
+      name: medName,
+      drug_name: medName,
       medicineName: medName,
       dosage,
       frequency,

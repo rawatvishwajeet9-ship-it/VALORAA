@@ -736,9 +736,14 @@ async function savePatientProfile(e) {
 
   const dobVal = document.getElementById('date_of_birth').value;
   if (dobVal) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dobVal > todayStr) {
+      showToast('Date of birth cannot be in the future (up to today allowed for newborns).', 'error');
+      return;
+    }
     const yr = parseInt(dobVal.split('-')[0], 10);
-    if (yr > 2022 || yr < 1900) {
-      showToast('Year of birth must be between 1900 and 2022.', 'error');
+    if (yr < 1900) {
+      showToast('Year of birth must be 1900 or later.', 'error');
       return;
     }
   }
@@ -881,7 +886,7 @@ async function loadPatientPrescriptions() {
                 <tbody>
                   ${meds.map(m => `
                     <tr style="border-bottom:1px solid #f1f5f9;">
-                      <td style="padding:10px 12px;font-weight:600;color:var(--text-main);">${escapeHtml(m.name || m.drug_name || '')}</td>
+                      <td style="padding:10px 12px;font-weight:600;color:var(--text-main);">${escapeHtml(m.name || m.medicineName || m.drug_name || m.medication_name || m.medicine || 'Prescribed Medication')}</td>
                       <td style="padding:10px 12px;color:#475569;">${escapeHtml(m.dosage || '-')}</td>
                       <td style="padding:10px 12px;color:#475569;">${escapeHtml(m.frequency || '-')}</td>
                       <td style="padding:10px 12px;color:#475569;">${escapeHtml(m.duration || '-')}</td>
@@ -1117,7 +1122,7 @@ async function loadMedicalHistory() {
                           Attached Prescription (${rx.medications.length} items)
                         </div>
                         <ul style="margin:0;padding-left:18px;font-size:0.82rem;color:#065f46;">
-                          ${rx.medications.map(m => `<li><strong>${escapeHtml(m.name || m.drug_name)}</strong> – ${escapeHtml(m.dosage || '')} (${escapeHtml(m.frequency || '')})</li>`).join('')}
+                          ${rx.medications.map(m => `<li><strong>${escapeHtml(m.name || m.medicineName || m.drug_name || m.medication_name || m.medicine || 'Prescribed Medicine')}</strong> – ${escapeHtml(m.dosage || '')} (${escapeHtml(m.frequency || '')})</li>`).join('')}
                         </ul>
                       </div>
                     ` : ''}

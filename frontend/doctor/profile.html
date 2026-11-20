@@ -365,15 +365,30 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="current_password" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">Current Password *</label>
-              <input type="password" id="current_password" class="form-control" placeholder="Enter your current password" required>
+              <div class="password-input-wrapper">
+                <input type="password" id="current_password" class="form-control" placeholder="Enter your current password" required>
+                <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('current_password', this)" title="Show or hide password" aria-label="Show password">
+                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" for="new_password" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">New Password *</label>
-              <input type="password" id="new_password" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+              <div class="password-input-wrapper">
+                <input type="password" id="new_password" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+                <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('new_password', this)" title="Show or hide password" aria-label="Show password">
+                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label" for="confirm_password" style="font-size:0.75rem;font-weight:700;text-transform:uppercase;">Confirm New Password *</label>
-              <input type="password" id="confirm_password" class="form-control" placeholder="Re-enter new password" minlength="6" required>
+              <div class="password-input-wrapper">
+                <input type="password" id="confirm_password" class="form-control" placeholder="Re-enter new password" minlength="6" required>
+                <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('confirm_password', this)" title="Show or hide password" aria-label="Show password">
+                  <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             </div>
           </div>
 

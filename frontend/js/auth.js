@@ -2,6 +2,43 @@
  * VALORA Healthcare Management Platform - Authentication & Guard Service
  */
 
+// Universal Password Visibility Toggle
+function togglePasswordVisibility(target, btnEl) {
+  let input = null;
+  if (typeof target === 'string') {
+    input = document.getElementById(target);
+  } else if (target && target.tagName === 'INPUT') {
+    input = target;
+  }
+
+  if (!input && btnEl) {
+    const wrapper = btnEl.closest('.password-input-wrapper, .input-with-icon-wrapper, .form-group');
+    if (wrapper) {
+      input = wrapper.querySelector('input[type="password"], input[type="text"]');
+    }
+  }
+
+  if (!input) return;
+
+  const currentType = input.getAttribute('type') || input.type;
+  const willShow = currentType === 'password';
+
+  input.setAttribute('type', willShow ? 'text' : 'password');
+  input.type = willShow ? 'text' : 'password';
+
+  if (btnEl) {
+    const eyeSvg = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    const eyeOffSvg = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>`;
+
+    btnEl.innerHTML = willShow ? eyeOffSvg : eyeSvg;
+    btnEl.setAttribute('title', willShow ? 'Hide password' : 'Show password');
+    btnEl.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
+  }
+
+  input.focus();
+}
+window.togglePasswordVisibility = togglePasswordVisibility;
+
 // Route Guard - Run on page load
 function checkAuth(requiredRole = null) {
   const user = getCurrentUser();

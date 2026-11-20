@@ -85,9 +85,9 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="reg-password">Account Password *</label>
-              <div class="password-input-wrapper">
+              <div class="password-input-wrapper" style="position:relative;display:flex;align-items:center;">
                 <input type="password" id="reg-password" class="form-control" placeholder="Min. 6 characters" required minlength="6" autocomplete="new-password">
-                <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('reg-password', this)" title="Show or hide password" aria-label="Show password">
+                <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('reg-password', this)" title="Show or hide password" aria-label="Show password" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:transparent;border:none;cursor:pointer;color:#64748b;padding:6px;display:flex;align-items:center;justify-content:center;z-index:10;">
                   <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
               </div>

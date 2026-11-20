@@ -17,6 +17,52 @@ const ICONS = {
   logout: `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`
 };
 
+/**
+ * Universal Password Visibility Toggle (Show / Hide Password)
+ */
+function togglePasswordVisibility(target, btnEl) {
+  let input = null;
+  if (typeof target === 'string') {
+    input = document.getElementById(target);
+  } else if (target && target.tagName === 'INPUT') {
+    input = target;
+  }
+
+  if (!input && btnEl) {
+    const wrapper = btnEl.closest('.password-input-wrapper, .input-with-icon-wrapper, .form-group');
+    if (wrapper) {
+      input = wrapper.querySelector('input[type="password"], input[type="text"]');
+    }
+  }
+
+  if (!input) return;
+
+  const currentType = input.getAttribute('type') || input.type;
+  const willShow = currentType === 'password';
+
+  input.setAttribute('type', willShow ? 'text' : 'password');
+  input.type = willShow ? 'text' : 'password';
+
+  if (btnEl) {
+    btnEl.innerHTML = willShow ? ICONS.eyeOff : ICONS.eye;
+    btnEl.setAttribute('title', willShow ? 'Hide password' : 'Show password');
+    btnEl.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
+  }
+
+  input.focus();
+}
+window.togglePasswordVisibility = togglePasswordVisibility;
+
+// Global fallback event delegation for any password toggle button
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.btn-toggle-password');
+  if (!btn) return;
+  if (!btn.hasAttribute('onclick')) {
+    e.preventDefault();
+    togglePasswordVisibility(null, btn);
+  }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Populate current user info in header and sidebar
   const user = getCurrentUser();

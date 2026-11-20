@@ -285,14 +285,29 @@ def history():
         patient_id = user["id"]
     conn = get_db()
 
+    # Patient profile baseline details
+    patient_row = conn.execute("""
+        SELECT u.id, u.name, u.email, u.phone, u.avatar,
+               p.date_of_birth, p.gender, p.blood_group, p.allergies,
+               p.chronic_conditions, p.height_cm, p.weight_kg,
+               p.emergency_contact_name, p.emergency_contact_phone,
+               p.emergency_contact_relation,
+               p.insurance_provider, p.insurance_policy_number
+        FROM users u
+        LEFT JOIN patients p ON u.id = p.user_id
+        WHERE u.id = ?
+    """, (patient_id,)).fetchone()
+    patient_info = dict(patient_row) if patient_row else None
+
     # Consultations with doctor info
     consultations = conn.execute("""
-        SELECT c.*, u.name as doctor_name, d.specialty, d.clinic_name
+        SELECT c.*, u.name as doctor_name, u.avatar as doctor_avatar,
+               d.specialty, d.clinic_name, d.license_number
         FROM consultations c
         JOIN users u ON c.doctor_id = u.id
         LEFT JOIN doctors d ON u.id = d.user_id
         WHERE c.patient_id = ?
-        ORDER BY c.consultation_date DESC
+        ORDER BY c.consultation_date DESC, c.id DESC
     """, (patient_id,)).fetchall()
 
     parsed_consultations = []
@@ -300,6 +315,9 @@ def history():
         item = dict(c)
         item["symptoms"] = json.loads(c["symptoms"] or "[]")
         rx = conn.execute("SELECT * FROM prescriptions WHERE consultation_id = ?", (c["id"],)).fetchone()
+        if not rx and item.get("appointment_id"):
+            rx = conn.execute("SELECT * FROM prescriptions WHERE appointment_id = ?", (item["appointment_id"],)).fetchone()
+
         if rx:
             rx_dict = dict(rx)
             rx_dict["medications"] = json.loads(rx["medications"] or "[]")
@@ -333,6 +351,7 @@ def history():
 
     return jsonify({
         "success": True,
+        "patient": patient_info,
         "timeline": parsed_consultations,
         "reports": parsed_records
     })

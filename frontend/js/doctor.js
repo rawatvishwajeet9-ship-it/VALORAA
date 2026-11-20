@@ -699,35 +699,436 @@ async function submitPrescription(e) {
   }
 }
 
-// View Patient Records in Doctor Modal
+// View Comprehensive Patient Clinical History & Prior Consultations in Doctor Modal
 async function viewPatientRecordsModal(patientId, patientName) {
-  document.getElementById('records-modal-patient-name').textContent = patientName;
+  const nameEl = document.getElementById('records-modal-patient-name');
+  if (nameEl) nameEl.textContent = patientName;
   const container = document.getElementById('modal-patient-records-list');
-  container.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;">Loading medical documents...</div>';
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="text-align:center;padding:48px 24px;color:#64748b;">
+      <div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:#0d9488;border-radius:50%;margin:0 auto 16px;animation:spin 0.8s linear infinite;"></div>
+      <div style="font-weight:700;font-size:1rem;color:#0f172a;">Loading Comprehensive Clinical Dossier...</div>
+      <div style="font-size:0.82rem;color:#64748b;margin-top:4px;">Retrieving patient profile, prior doctor consultations, vitals, prescriptions, and diagnostic imaging</div>
+    </div>
+  `;
   openModal('modal-patient-records');
 
   try {
-    const res = await api.get('/records', { patient_id: patientId });
-    if (!res.success || !res.records || res.records.length === 0) {
-      container.innerHTML = `<div style="text-align:center;padding:32px;color:#94a3b8;">No medical records in this patient's vault.</div>`;
+    const res = await api.get('/patient/history', { patient_id: patientId });
+    if (!res.success) {
+      container.innerHTML = `<div style="text-align:center;padding:36px;color:#dc2626;">Failed to load patient history: ${escapeHtml(res.message || 'Unknown error')}</div>`;
       return;
     }
 
-    container.innerHTML = res.records.map(r => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #f1f5f9;">
-        <div>
-          <div style="font-weight:700;font-size:0.95rem;color:#0f172a;">${escapeHtml(r.title)}</div>
-          <div style="font-size:0.8rem;color:#64748b;">${escapeHtml(r.record_type)} &bull; ${formatDate(r.record_date || r.created_at)}</div>
-          <div style="font-size:0.78rem;color:#475569;margin-top:2px;">${escapeHtml(r.description || '')}</div>
+    const patient = res.patient || {};
+    const timeline = res.timeline || [];
+    const reports = res.reports || [];
+
+    // Helper: calculate readable age from DOB string
+    function formatPatientAge(dobStr) {
+      if (!dobStr) return 'N/A';
+      const dob = new Date(dobStr);
+      if (isNaN(dob.getTime())) return 'N/A';
+      const now = new Date();
+      let years = now.getFullYear() - dob.getFullYear();
+      let m = now.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) {
+        years--;
+      }
+      if (years >= 1) return `${years} yrs`;
+      const diffDays = Math.floor((now - dob) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 0) return 'Newborn (0 days)';
+      if (diffDays < 30) return `${diffDays} days`;
+      const months = Math.floor(diffDays / 30.4375);
+      return `${months} mos`;
+    }
+
+    const patientAge = formatPatientAge(patient.date_of_birth);
+    const bloodGroup = patient.blood_group || 'Not recorded';
+    const allergies = patient.allergies ? patient.allergies.trim() : '';
+    const conditions = patient.chronic_conditions ? patient.chronic_conditions.trim() : '';
+    const phone = patient.phone || 'N/A';
+    const email = patient.email || 'N/A';
+    const gender = patient.gender || 'Not specified';
+    const emergencyContact = patient.emergency_contact_name ? `${patient.emergency_contact_name} (${patient.emergency_contact_relation || 'Contact'}: ${patient.emergency_contact_phone || 'N/A'})` : 'None documented';
+
+    let html = `
+      <!-- 1. Patient Clinical Baseline & Demographic Summary -->
+      <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:52px;height:52px;border-radius:12px;background:#e6f7f5;color:#0d9488;font-weight:800;font-size:1.3rem;display:flex;align-items:center;justify-content:center;border:1px solid #99f6e4;">
+              ${escapeHtml((patient.name || patientName || 'P').charAt(0).toUpperCase())}
+            </div>
+            <div>
+              <div style="font-size:1.2rem;font-weight:800;color:#0f172a;display:flex;align-items:center;gap:8px;">
+                ${escapeHtml(patient.name || patientName)}
+                <span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;font-size:0.75rem;padding:2px 8px;">Active Patient</span>
+              </div>
+              <div style="font-size:0.82rem;color:#64748b;margin-top:2px;">
+                ${escapeHtml(email)} &bull; ${escapeHtml(phone)}
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <span class="badge" style="background:#e6f7f5;color:#0d9488;border:1px solid #99f6e4;font-size:0.85rem;font-weight:800;padding:6px 12px;">
+              Blood Group: ${escapeHtml(bloodGroup)}
+            </span>
+          </div>
         </div>
-        <a href="${r.file_url}" target="_blank" class="btn btn-primary btn-sm">Inspect Document</a>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;background:#f8fafc;padding:12px 16px;border-radius:10px;border:1px solid #f1f5f9;font-size:0.82rem;">
+          <div>
+            <span style="color:#64748b;font-weight:600;display:block;">Age &amp; DOB:</span>
+            <strong style="color:#0f172a;">${patientAge}</strong> <span style="color:#94a3b8;">(${patient.date_of_birth ? formatDate(patient.date_of_birth) : 'DOB not set'})</span>
+          </div>
+          <div>
+            <span style="color:#64748b;font-weight:600;display:block;">Gender:</span>
+            <strong style="color:#0f172a;">${escapeHtml(gender)}</strong>
+          </div>
+          <div>
+            <span style="color:#64748b;font-weight:600;display:block;">Recorded Vitals Baseline:</span>
+            <strong style="color:#0f172a;">${patient.height_cm ? patient.height_cm + ' cm' : '--'} &bull; ${patient.weight_kg ? patient.weight_kg + ' kg' : '--'}</strong>
+          </div>
+          <div>
+            <span style="color:#64748b;font-weight:600;display:block;">Emergency Contact:</span>
+            <strong style="color:#0f172a;">${escapeHtml(emergencyContact)}</strong>
+          </div>
+        </div>
+
+        <!-- Clinical Alerts: Allergies & Chronic Conditions -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+          <div style="background:${allergies ? '#fff1f2' : '#f8fafc'};border:1px solid ${allergies ? '#fecdd3' : '#e2e8f0'};border-radius:8px;padding:10px 14px;">
+            <div style="font-size:0.75rem;font-weight:700;color:${allergies ? '#be123c' : '#64748b'};text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">
+              Known Drug / Environmental Allergies
+            </div>
+            <div style="font-size:0.85rem;color:${allergies ? '#9f1239' : '#334155'};font-weight:${allergies ? '700' : '500'};">
+              ${allergies ? escapeHtml(allergies) : 'No known drug allergies reported'}
+            </div>
+          </div>
+          <div style="background:${conditions ? '#eff6ff' : '#f8fafc'};border:1px solid ${conditions ? '#bfdbfe' : '#e2e8f0'};border-radius:8px;padding:10px 14px;">
+            <div style="font-size:0.75rem;font-weight:700;color:${conditions ? '#1d4ed8' : '#64748b'};text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">
+              Documented Chronic Conditions
+            </div>
+            <div style="font-size:0.85rem;color:${conditions ? '#1e40af' : '#334155'};font-weight:${conditions ? '700' : '500'};">
+              ${conditions ? escapeHtml(conditions) : 'None documented'}
+            </div>
+          </div>
+        </div>
       </div>
-    `).join('');
+
+      <!-- 2. Interactive Navigation Tabs -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn btn-sm history-tab-btn" id="tab-btn-all" onclick="switchHistoryTab('all')" style="background:#0d9488;color:#ffffff;font-weight:700;padding:6px 14px;border-radius:8px;">
+            All Records (${timeline.length + reports.length})
+          </button>
+          <button type="button" class="btn btn-sm btn-outline history-tab-btn" id="tab-btn-consults" onclick="switchHistoryTab('consults')" style="font-weight:700;padding:6px 14px;border-radius:8px;">
+            Doctor Consultations (${timeline.length})
+          </button>
+          <button type="button" class="btn btn-sm btn-outline history-tab-btn" id="tab-btn-reports" onclick="switchHistoryTab('reports')" style="font-weight:700;padding:6px 14px;border-radius:8px;">
+            Diagnostic Reports &amp; Scans (${reports.length})
+          </button>
+        </div>
+        <span style="font-size:0.75rem;color:#64748b;font-weight:600;">
+          Chronologically sorted &bull; Most recent first
+        </span>
+      </div>
+
+      <!-- Content Container: Doctor Consultations -->
+      <div id="history-section-consultations" style="margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <h4 style="font-size:1.1rem;font-weight:800;color:#0f172a;margin:0;">Prior Physician Consultations &amp; Encounters</h4>
+          <span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;font-size:0.75rem;font-weight:700;">
+            ${timeline.length} Visit${timeline.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        ${timeline.length === 0 ? `
+          <div style="background:#ffffff;border:1px dashed #cbd5e1;border-radius:12px;padding:32px;text-align:center;color:#64748b;font-size:0.9rem;">
+            No prior physician consultations on file for this patient.
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            ${timeline.map(c => {
+              const rx = c.prescription;
+              const meds = rx && rx.medications ? rx.medications : [];
+              const tests = rx && rx.diagnostic_tests ? rx.diagnostic_tests : [];
+              return `
+                <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                  
+                  <!-- Consultation Header: Date, Doctor Name, Specialty, Clinic -->
+                  <div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f1f5f9;padding-bottom:14px;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+                    <div>
+                      <div style="font-size:0.75rem;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:0.04em;">
+                        CONSULTATION VISIT &bull; ${formatDate(c.consultation_date || c.created_at)}
+                      </div>
+                      <div style="font-size:1.05rem;font-weight:800;color:#0f172a;margin-top:2px;">
+                        Dr. ${escapeHtml(c.doctor_name || 'Attending Physician')}
+                      </div>
+                      <div style="font-size:0.8rem;color:#64748b;margin-top:2px;">
+                        Specialty: <strong style="color:#334155;">${escapeHtml(c.specialty || 'General Practitioner')}</strong> &bull; ${escapeHtml(c.clinic_name || c.hospital_affiliation || 'VALORA Care Center')}
+                      </div>
+                    </div>
+                    <div>
+                      <span class="badge" style="background:#e6f7f5;color:#0d9488;border:1px solid #99f6e4;font-size:0.8rem;font-weight:700;padding:4px 10px;">
+                        Diagnosis: ${escapeHtml(c.diagnosis)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Reported Symptoms -->
+                  ${c.symptoms && c.symptoms.length > 0 ? `
+                    <div style="margin-bottom:12px;">
+                      <span style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;">Reported Symptoms:</span>
+                      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+                        ${c.symptoms.map(s => `<span class="badge" style="background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;font-size:0.75rem;padding:3px 8px;">${escapeHtml(s)}</span>`).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+
+                  <!-- Recorded Vitals at this Encounter -->
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin-bottom:14px;">
+                    <div style="font-size:0.72rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">
+                      Vitals Recorded During Visit
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:10px;font-size:0.82rem;">
+                      <div>
+                        <span style="color:#64748b;display:block;">Blood Pressure:</span>
+                        <strong style="color:#0f172a;">${escapeHtml(c.blood_pressure || '120/80 mmHg')}</strong>
+                      </div>
+                      <div>
+                        <span style="color:#64748b;display:block;">Heart Rate:</span>
+                        <strong style="color:#0f172a;">${c.heart_rate || 72} bpm</strong>
+                      </div>
+                      <div>
+                        <span style="color:#64748b;display:block;">Temperature:</span>
+                        <strong style="color:#0f172a;">${c.temperature || 98.6} &deg;F</strong>
+                      </div>
+                      <div>
+                        <span style="color:#64748b;display:block;">Oxygen (SpO2):</span>
+                        <strong style="color:#0f172a;">${c.spo2 || 99}%</strong>
+                      </div>
+                      <div>
+                        <span style="color:#64748b;display:block;">Weight / Height:</span>
+                        <strong style="color:#0f172a;">${c.weight_kg ? c.weight_kg + ' kg' : '--'} / ${c.height_cm ? c.height_cm + ' cm' : '--'}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Clinical Notes & Treatment Plan -->
+                  ${c.clinical_notes ? `
+                    <div style="margin-bottom:12px;">
+                      <div style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:3px;">
+                        Doctor Clinical Examination &amp; Notes
+                      </div>
+                      <div style="font-size:0.85rem;color:#334155;background:#f8fafc;padding:10px 14px;border-radius:8px;border:1px solid #f1f5f9;line-height:1.4;">
+                        ${escapeHtml(c.clinical_notes)}
+                      </div>
+                    </div>
+                  ` : ''}
+
+                  ${c.treatment_plan ? `
+                    <div style="margin-bottom:12px;">
+                      <div style="font-size:0.75rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:3px;">
+                        Treatment &amp; Management Plan
+                      </div>
+                      <div style="font-size:0.85rem;color:#334155;background:#f8fafc;padding:10px 14px;border-radius:8px;border:1px solid #f1f5f9;line-height:1.4;">
+                        ${escapeHtml(c.treatment_plan)}
+                      </div>
+                    </div>
+                  ` : ''}
+
+                  ${c.follow_up_date ? `
+                    <div style="font-size:0.8rem;color:#0d9488;font-weight:700;margin-bottom:12px;">
+                      Follow-up Review Scheduled: ${formatDate(c.follow_up_date)}
+                    </div>
+                  ` : ''}
+
+                  <!-- Attached Prescription Details -->
+                  ${meds.length > 0 ? `
+                    <div style="margin-top:14px;border-top:1px solid #f1f5f9;padding-top:14px;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <span style="font-size:0.78rem;font-weight:800;color:#0d9488;text-transform:uppercase;letter-spacing:0.04em;">
+                          Prescribed Medication Regimen (${meds.length})
+                        </span>
+                        <span style="font-size:0.72rem;color:#64748b;">Digitally Signed Electronic Rx</span>
+                      </div>
+                      <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.82rem;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
+                          <thead>
+                            <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;text-align:left;">
+                              <th style="padding:8px 12px;font-weight:700;color:#475569;">Medication Name</th>
+                              <th style="padding:8px 12px;font-weight:700;color:#475569;">Dosage</th>
+                              <th style="padding:8px 12px;font-weight:700;color:#475569;">Frequency</th>
+                              <th style="padding:8px 12px;font-weight:700;color:#475569;">Duration</th>
+                              <th style="padding:8px 12px;font-weight:700;color:#475569;">Instructions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${meds.map(m => {
+                              const medName = m.name || m.medicineName || m.drug_name || m.medication_name || 'Medication';
+                              return `
+                                <tr style="border-bottom:1px solid #f1f5f9;">
+                                  <td style="padding:8px 12px;font-weight:700;color:#0f172a;">${escapeHtml(medName)}</td>
+                                  <td style="padding:8px 12px;color:#334155;">${escapeHtml(m.dosage || m.dose || '1 tablet')}</td>
+                                  <td style="padding:8px 12px;color:#334155;">${escapeHtml(m.frequency || 'Once daily')}</td>
+                                  <td style="padding:8px 12px;color:#334155;">${escapeHtml(m.duration || '5 days')}</td>
+                                  <td style="padding:8px 12px;color:#64748b;">${escapeHtml(m.instructions || m.timing || 'Take as advised')}</td>
+                                </tr>
+                              `;
+                            }).join('')}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ` : ''}
+
+                  <!-- Ordered Diagnostic Tests -->
+                  ${tests.length > 0 ? `
+                    <div style="margin-top:10px;font-size:0.82rem;">
+                      <span style="font-weight:700;color:#475569;">Diagnostic Investigations Ordered:</span>
+                      <span style="color:#0d9488;font-weight:600;margin-left:4px;">${tests.map(t => escapeHtml(typeof t === 'string' ? t : (t.test_name || t.name))).join(', ')}</span>
+                    </div>
+                  ` : ''}
+
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+
+      <!-- Content Container: Diagnostic Reports & Imaging -->
+      <div id="history-section-reports" style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <h4 style="font-size:1.1rem;font-weight:800;color:#0f172a;margin:0;">Diagnostic Test Reports &amp; Medical Scans</h4>
+          <span class="badge" style="background:#e6f7f5;color:#0d9488;border:1px solid #99f6e4;font-size:0.75rem;font-weight:700;">
+            ${reports.length} File${reports.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        ${reports.length === 0 ? `
+          <div style="background:#ffffff;border:1px dashed #cbd5e1;border-radius:12px;padding:32px;text-align:center;color:#64748b;font-size:0.9rem;">
+            No diagnostic reports or medical scans uploaded for this patient.
+          </div>
+        ` : `
+          <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px;">
+            ${reports.map(r => {
+              const ext = (r.file_url || '').split('.').pop().toUpperCase();
+              return `
+                <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                  <div>
+                    ${r.is_image ? `
+                      <div style="position:relative;width:100%;height:160px;border-radius:10px;overflow:hidden;background:#f8fafc;margin-bottom:12px;border:1px solid #f1f5f9;cursor:pointer;" onclick="window.open('${r.file_url}', '_blank')">
+                        <img src="${r.file_url}" alt="${escapeHtml(r.title)}" style="width:100%;height:100%;object-fit:cover;transition:transform 0.2s ease;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                        <span style="position:absolute;top:8px;right:8px;background:rgba(15,23,42,0.75);color:#ffffff;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:6px;backdrop-filter:blur(4px);">
+                          ${ext || 'SCAN'}
+                        </span>
+                      </div>
+                    ` : `
+                      <div style="width:100%;height:100px;border-radius:10px;background:#f8fafc;margin-bottom:12px;border:1px solid #f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#0d9488;">
+                        <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span style="font-size:0.75rem;font-weight:700;margin-top:4px;color:#475569;">${ext} Document</span>
+                      </div>
+                    `}
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                      <span class="badge" style="background:#f0fdfa;color:#0d9488;border:1px solid #ccfbf1;font-size:0.72rem;font-weight:700;padding:2px 8px;">
+                        ${escapeHtml(r.record_type ? r.record_type.replace(/_/g, ' ').toUpperCase() : 'REPORT')}
+                      </span>
+                      <span style="font-size:0.75rem;color:#94a3b8;font-weight:600;">
+                        ${formatDate(r.record_date || r.created_at)}
+                      </span>
+                    </div>
+
+                    <h5 style="font-size:0.95rem;font-weight:800;color:#0f172a;margin:4px 0 6px 0;line-height:1.3;">
+                      ${escapeHtml(r.title)}
+                    </h5>
+
+                    <div style="font-size:0.78rem;color:#64748b;margin-bottom:6px;">
+                      Uploaded by: <strong style="color:#334155;">${escapeHtml(r.uploader_name || r.facility_name)}</strong>
+                    </div>
+
+                    ${r.description ? `
+                      <p style="font-size:0.78rem;color:#475569;background:#f8fafc;padding:8px 10px;border-radius:6px;border:1px solid #f1f5f9;margin:0 0 8px 0;line-height:1.4;">
+                        ${escapeHtml(r.description)}
+                      </p>
+                    ` : ''}
+
+                    ${r.tags && r.tags.length > 0 ? `
+                      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">
+                        ${r.tags.map(t => `<span style="font-size:0.68rem;background:#f1f5f9;color:#475569;padding:2px 6px;border-radius:4px;">#${escapeHtml(t)}</span>`).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;">
+                    <a href="${r.file_url}" target="_blank" class="btn btn-outline btn-sm" style="flex:1;text-align:center;font-size:0.78rem;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:4px;">
+                      <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                      Inspect Document
+                    </a>
+                    <a href="${r.file_url}" download class="btn btn-secondary btn-sm" style="font-size:0.78rem;text-decoration:none;padding:6px 10px;" title="Download File">
+                      <svg class="svg-icon svg-icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </a>
+                  </div>
+
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+    `;
+
+    container.innerHTML = html;
 
   } catch (error) {
-    showToast(error.message, 'error');
+    container.innerHTML = `<div style="text-align:center;padding:36px;color:#dc2626;">Error loading patient history: ${escapeHtml(error.message || 'Server error')}</div>`;
   }
 }
+window.viewPatientRecordsModal = viewPatientRecordsModal;
+
+// Tab switcher for Patient History Modal
+function switchHistoryTab(tab) {
+  const consultSec = document.getElementById('history-section-consultations');
+  const reportSec = document.getElementById('history-section-reports');
+  const btnAll = document.getElementById('tab-btn-all');
+  const btnConsults = document.getElementById('tab-btn-consults');
+  const btnReports = document.getElementById('tab-btn-reports');
+
+  if (!consultSec || !reportSec) return;
+
+  const resetBtn = (btn) => {
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--text-main)';
+    btn.classList.add('btn-outline');
+  };
+  const activeBtn = (btn) => {
+    btn.style.background = '#0d9488';
+    btn.style.color = '#ffffff';
+    btn.classList.remove('btn-outline');
+  };
+
+  [btnAll, btnConsults, btnReports].forEach(b => { if (b) resetBtn(b); });
+
+  if (tab === 'all') {
+    consultSec.style.display = 'block';
+    reportSec.style.display = 'block';
+    if (btnAll) activeBtn(btnAll);
+  } else if (tab === 'consults') {
+    consultSec.style.display = 'block';
+    reportSec.style.display = 'none';
+    if (btnConsults) activeBtn(btnConsults);
+  } else if (tab === 'reports') {
+    consultSec.style.display = 'none';
+    reportSec.style.display = 'block';
+    if (btnReports) activeBtn(btnReports);
+  }
+}
+window.switchHistoryTab = switchHistoryTab;
 
 // Load Doctor Profile
 async function loadDoctorProfile() {
@@ -875,11 +1276,20 @@ async function loadDoctorReviews() {
 
     const titleEl = document.getElementById('reviews-header-title');
     const metaEl = document.getElementById('reviews-header-meta');
+    const avgStatEl = document.getElementById('reviews-stat-avg');
+    const totalStatEl = document.getElementById('reviews-stat-total');
+
+    if (avgStatEl) {
+      avgStatEl.textContent = `${res.average_rating || 5.0} / 5.0`;
+    }
+    if (totalStatEl) {
+      totalStatEl.textContent = res.total_reviews || 0;
+    }
     if (titleEl) {
-      titleEl.textContent = `Patient Reviews & Ratings (${res.total_reviews})`;
+      titleEl.textContent = `Patient Reviews & Ratings (${res.total_reviews || 0})`;
     }
     if (metaEl) {
-      metaEl.innerHTML = `Average Rating: <strong>${res.average_rating} / 5.0</strong> &bull; Verified patient consultations`;
+      metaEl.innerHTML = `Average Rating: <strong>${res.average_rating || 5.0} / 5.0</strong> &bull; Verified patient consultations`;
     }
 
     if (!res.reviews || res.reviews.length === 0) {

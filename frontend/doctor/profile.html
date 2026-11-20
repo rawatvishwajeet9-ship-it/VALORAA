@@ -131,7 +131,7 @@
           </div>
           <span class="nav-link-chevron">&rsaquo;</span>
         </a>
-        <a href="#reviews-section" class="nav-link-item">
+        <a href="/doctor/reviews.html" class="nav-link-item">
           <div class="nav-link-left">
             <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             Patient Reviews
@@ -404,29 +404,6 @@
         </form>
       </div>
 
-      <!-- Section 4: Patient Reviews & Ratings -->
-      <div class="card" id="reviews-section">
-        <div class="card-header">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:#fef3c7;color:#d97706;display:flex;align-items:center;justify-content:center;">
-              <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            </div>
-            <div>
-              <div class="card-title" id="reviews-header-title">Patient Reviews &amp; Ratings</div>
-              <div style="font-size:0.8rem;color:#64748b;" id="reviews-header-meta">Verified patient consultations</div>
-            </div>
-          </div>
-          <button class="btn btn-sm" style="background:#e6f7f5;color:#0d9488;border:1px solid #99f6e4;" onclick="loadDoctorReviews()">
-            Refresh Reviews &rarr;
-          </button>
-        </div>
-
-        <div id="reviews-list-container">
-          <div style="text-align:center;padding:24px;color:#94a3b8;">Loading verified reviews...</div>
-        </div>
-
-      </div>
-
     </main>
   </div>
 
@@ -438,7 +415,6 @@
     document.addEventListener('DOMContentLoaded', () => {
       checkAuth('doctor');
       loadDoctorProfile();
-      loadDoctorReviews();
 
       const phoneInput = document.getElementById('doc-phone');
       bindPhoneInputValidation(phoneInput);

@@ -101,7 +101,7 @@
           </div>
           <span class="nav-link-chevron">&rsaquo;</span>
         </a>
-        <a href="/doctor/profile.html#reviews-section" class="nav-link-item">
+        <a href="/doctor/reviews.html" class="nav-link-item">
           <div class="nav-link-left">
             <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             Patient Reviews
@@ -409,16 +409,27 @@
     </div>
   </div>
 
-  <!-- Modal: View Patient Records -->
+  <!-- Modal: View Complete Patient History & Prior Consultations -->
   <div class="modal-overlay" id="modal-patient-records">
-    <div class="modal-container" style="max-width:680px;">
-      <div class="modal-header">
-        <h3 class="modal-title">Medical Records: <span id="records-modal-patient-name">Patient</span></h3>
+    <div class="modal-container" style="max-width:980px;width:95%;max-height:92vh;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:16px;">
+      <div class="modal-header" style="padding:16px 24px;border-bottom:1px solid #e2e8f0;background:#ffffff;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:0.75rem;font-weight:700;letter-spacing:0.05em;color:#0d9488;text-transform:uppercase;">LONGITUDINAL CLINICAL DOSSIER</div>
+          <h3 class="modal-title" style="margin:2px 0 0;font-size:1.25rem;">Clinical History &amp; Consultations: <span id="records-modal-patient-name" style="color:#0d9488;">Patient</span></h3>
+        </div>
         <button type="button" class="btn-close" data-close-modal>&times;</button>
       </div>
-      <div class="modal-body" id="modal-patient-records-list"></div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+
+      <div class="modal-body" id="modal-patient-records-list" style="overflow-y:auto;max-height:calc(92vh - 130px);padding:20px 24px;background:#f8fafc;">
+        <!-- Injected via viewPatientRecordsModal() in doctor.js -->
+      </div>
+
+      <div class="modal-footer" style="padding:12px 24px;background:#ffffff;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:0.75rem;color:#64748b;display:flex;align-items:center;gap:6px;">
+          <span style="width:6px;height:6px;background:#10b981;border-radius:50%;display:inline-block;"></span>
+          Authorized Physician View &bull; Encrypted Clinical Records
+        </span>
+        <button type="button" class="btn btn-secondary" data-close-modal>Close History</button>
       </div>
     </div>
   </div>
